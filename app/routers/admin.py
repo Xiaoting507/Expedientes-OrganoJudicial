@@ -49,7 +49,7 @@ def desbloquear(uid: int, request: Request, db: Session = Depends(get_db), admin
     u = db.get(Usuario, uid)
     if u is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Usuario no encontrado")
-    u.activo, u.intentos_fallidos = True, 0
+    u.activo, u.intentos_fallidos, u.bloqueado_hasta = True, 0, None
     audit.registrar(db, usuario=admin.username, accion="DESBLOQUEAR_USUARIO", entidad="usuario",
                     entidad_id=u.id, request=request)
     db.commit()

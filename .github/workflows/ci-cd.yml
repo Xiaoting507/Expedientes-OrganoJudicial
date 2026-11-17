@@ -48,7 +48,8 @@ jobs:
           if-no-files-found: ignore
       - name: Levantar API (SQLite)
         run: |
-          uvicorn app.main:app --port 8000 &
+          # SEC-02: los datos demo ya no se crean por defecto; se piden de forma explícita para Robot
+          SEED_DEMO=1 uvicorn app.main:app --port 8000 &
           for i in $(seq 1 30); do curl -sf localhost:8000/healthz && break; sleep 1; done
       - name: Ejecutar Robot Framework
         run: robot --outputdir results/local --xunit xunit.xml tests/robot
@@ -94,9 +95,14 @@ jobs:
         run: |
           kubectl apply -f k8s/00-namespace.yaml
           PASS=$(openssl rand -hex 16)
+          # SEC-03: clave demo aleatoria por despliegue, enmascarada en los logs y pasada a Robot
+          SEED_PASS="Stg-$(openssl rand -hex 12)"
+          echo "::add-mask::$SEED_PASS"
+          echo "SEED_PASS=$SEED_PASS" >> "$GITHUB_ENV"
           kubectl -n expediente-judicial create secret generic app-secrets \
             --from-literal=JWT_SECRET=$(openssl rand -hex 32) \
             --from-literal=POSTGRES_PASSWORD=$PASS \
+            --from-literal=SEED_PASSWORD=$SEED_PASS \
             --from-literal=DATABASE_URL=postgresql+psycopg://judicial:$PASS@postgres:5432/expedientes
           # ConfigMap de staging: APP_ENV=produccion (JWT_SECRET de 64 hex cumple >=32) y SEED_DEMO="1"
           # porque Robot corre contra el cluster y necesita usuarios demo. En producción real: SEED_DEMO="0".
@@ -114,7 +120,7 @@ jobs:
         run: |
           kubectl -n expediente-judicial port-forward svc/expediente-api 8080:80 &
           for i in $(seq 1 30); do curl -sf localhost:8080/healthz && break; sleep 1; done
-          robot --variable BASE_URL:http://localhost:8080 --outputdir results/staging tests/robot
+          robot --variable BASE_URL:http://localhost:8080 --variable PASSWORD:$SEED_PASS --outputdir results/staging tests/robot
       - name: Logs si algo falla
         if: failure()
         run: kubectl -n expediente-judicial logs -l app=expediente-api --tail=100

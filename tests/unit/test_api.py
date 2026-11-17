@@ -1,8 +1,6 @@
 """Endpoints clave con TestClient y BD temporal (ver conftest)."""
 from datetime import date, timedelta
 
-import pytest
-
 from conftest import PASSWORD
 
 
@@ -32,19 +30,6 @@ def test_login_ok_y_fallido(client):
 def test_sin_token_401_y_token_basura_401(client):
     assert client.get("/api/expedientes").status_code == 401
     assert client.get("/api/expedientes", headers={"Authorization": "Bearer abc.def.ghi"}).status_code == 401
-
-
-def test_bloqueo_tras_5_intentos_y_desbloqueo(client, tokens, ids):
-    # usuario propio: no afecta a las cuentas demo
-    r = client.post("/api/usuarios", headers=tokens["admin1"], json={
-        "username": "unit_bloqueo", "nombre": "Unit Bloqueo", "password": PASSWORD, "rol": "juez"})
-    assert r.status_code == 201
-    uid = r.json()["id"]
-    for _ in range(5):
-        assert client.post("/api/auth/login", json={"username": "unit_bloqueo", "password": "mala"}).status_code == 401
-    assert client.post("/api/auth/login", json={"username": "unit_bloqueo", "password": PASSWORD}).status_code == 423
-    assert client.post(f"/api/usuarios/{uid}/desbloquear", headers=tokens["admin1"]).status_code == 200
-    assert client.post("/api/auth/login", json={"username": "unit_bloqueo", "password": PASSWORD}).status_code == 200
 
 
 def test_crear_expediente_solo_secretario(client, tokens, ids):
@@ -138,18 +123,16 @@ def test_consulta_publica(client, tokens, ids):
     assert mal.status_code == inex.status_code == 404 and mal.json() == inex.json()
 
 
-# --- Defectos abiertos (xfail): documentan comportamiento que deberia corregirse ---
+# --- Defectos cerrados en el Sprint 6 (antes xfail) ---
 
-@pytest.mark.xfail(reason="DEF-01: no hay matriz de transiciones de estado (archivado -> radicado permitido)", strict=True)
 def test_def01_no_se_puede_reabrir_un_archivado_a_radicado(client, tokens, ids):
     exp = _crear(client, tokens, ids)
     url = f"/api/expedientes/{exp['id']}/estado"
     assert client.post(url, json={"estado": "archivado", "motivo": "Archivo definitivo"}, headers=tokens["juez1"]).status_code == 200
     r = client.post(url, json={"estado": "radicado", "motivo": "Intento de reabrir"}, headers=tokens["juez1"])
-    assert r.status_code in (409, 422)
+    assert r.status_code == 409
 
 
-@pytest.mark.xfail(reason="DEF-02: numero EXP = count()+1 genera duplicado si hay huecos -> 500", strict=True)
 def test_def02_numero_no_se_duplica_si_hay_huecos(client, tokens, ids):
     from app.db import SessionLocal
     from app.models import Expediente
@@ -162,3 +145,26 @@ def test_def02_numero_no_se_duplica_si_hay_huecos(client, tokens, ids):
     body = {"materia": "civil", "demandante": "Hueco Uno", "demandado": "Hueco Dos"}
     r = client.post("/api/expedientes", json=body, headers=tokens["secretario1"])
     assert r.status_code == 201
+
+
+def test_def01_no_hay_sentencia_sin_admitir_la_demanda(client, tokens, ids):
+    exp = _crear(client, tokens, ids)
+    url = f"/api/expedientes/{exp['id']}/estado"
+    r = client.post(url, json={"estado": "con_sentencia", "motivo": "Sentencia directa"}, headers=tokens["juez1"])
+    assert r.status_code == 409
+
+
+def test_def01_409_informa_los_estados_permitidos(client, tokens, ids):
+    exp = _crear(client, tokens, ids)
+    url = f"/api/expedientes/{exp['id']}/estado"
+    r = client.post(url, json={"estado": "en_audiencia", "motivo": "Saltar el tramite"}, headers=tokens["juez1"])
+    assert r.status_code == 409
+    assert sorted(r.json()["detail"]["permitidos"]) == ["archivado", "en_tramite"]
+
+
+def test_def01_camino_completo_permitido(client, tokens, ids):
+    exp = _crear(client, tokens, ids)
+    url = f"/api/expedientes/{exp['id']}/estado"
+    for estado in ("en_tramite", "en_audiencia", "con_sentencia", "archivado"):
+        r = client.post(url, json={"estado": estado, "motivo": f"Paso a {estado}"}, headers=tokens["juez1"])
+        assert r.status_code == 200, (estado, r.text)

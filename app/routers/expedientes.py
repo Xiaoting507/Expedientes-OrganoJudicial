@@ -10,12 +10,22 @@ import secrets
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .. import audit
 from ..config import ALERTA_DIAS
 from ..db import get_db
-from ..models import Actuacion, Auditoria, EstadoExpediente, Expediente, Rol, Usuario
+from ..models import (
+    TRANSICIONES,
+    Actuacion,
+    Auditoria,
+    EstadoExpediente,
+    Expediente,
+    Rol,
+    Usuario,
+    transicion_permitida,
+)
 from ..schemas import (
     ActuacionIn,
     ActuacionOut,
@@ -68,8 +78,10 @@ def _validar_asignados(db: Session, juez_id: int | None = None, abogado_id: int 
 
 
 def _siguiente_numero(db: Session) -> str:
+    """DEF-02: siguiente al mayor número del año (count()+1 se duplicaba si había huecos)."""
     anio = date.today().year
-    n = db.query(Expediente).count() + 1
+    ultimo = db.query(func.max(Expediente.numero)).filter(Expediente.numero.like(f"EXP-{anio}-%")).scalar()
+    n = int(ultimo.rsplit("-", 1)[1]) + 1 if ultimo else 1
     return f"EXP-{anio}-{n:06d}"
 
 
@@ -199,6 +211,12 @@ def cambiar_estado(
     usuario: Usuario = Depends(requiere_rol(Rol.juez)),
 ):
     exp = _obtener(db, exp_id, usuario)
+    if not transicion_permitida(exp.estado, datos.estado):  # DEF-01 / RN-05.5
+        permitidos = [e.value for e in TRANSICIONES[exp.estado]]
+        raise HTTPException(status.HTTP_409_CONFLICT, {
+            "mensaje": f"Transición no permitida: {exp.estado.value} -> {datos.estado.value}",
+            "permitidos": permitidos,
+        })
     antes = _snapshot(exp)
     exp.estado = datos.estado
     db.add(Actuacion(expediente_id=exp.id, tipo="cambio_estado",

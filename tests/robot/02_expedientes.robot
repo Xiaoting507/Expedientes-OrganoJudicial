@@ -49,3 +49,15 @@ Alertas de plazo incluyen expedientes por vencer
     ${h}=    Login Como    secretario1
     ${resp}=    GET On Session    api    /api/expedientes/alertas    headers=${h}
     Should Not Be Empty    ${resp.json()}
+
+Expediente archivado no se puede reabrir
+    [Documentation]    DEF-01 / RN-05.5 (Sprint 6): un archivado no vuelve a radicado; el 409 lista los estados permitidos.
+    [Tags]    DEF-01
+    ${hs}=    Login Como    secretario1
+    ${exp}=    Crear Expediente De Prueba    ${hs}
+    ${hj}=    Login Como    juez1
+    ${archivar}=    Create Dictionary    estado=archivado    motivo=Archivo definitivo
+    POST On Session    api    /api/expedientes/${exp}[id]/estado    json=${archivar}    headers=${hj}    expected_status=200
+    ${reabrir}=    Create Dictionary    estado=radicado    motivo=Intento de reabrir
+    ${resp}=    POST On Session    api    /api/expedientes/${exp}[id]/estado    json=${reabrir}    headers=${hj}    expected_status=409
+    Should Be Empty    ${resp.json()}[detail][permitidos]

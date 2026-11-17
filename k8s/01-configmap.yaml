@@ -8,5 +8,6 @@ data:
   JWT_EXPIRE_MINUTES: "60"
   APP_ENV: "produccion"   # exige JWT_SECRET >= 32 caracteres (el pipeline genera 64 hex con openssl)
   # STAGING/CI: "1" porque Robot Framework corre contra el cluster y necesita los usuarios demo.
+  # SEC-03 (Sprint 6): su clave ya no es la pública; el pipeline genera SEED_PASSWORD aleatoria en el Secret.
   # PRODUCCIÓN real: "0" (ver k8s/produccion/01-configmap.yaml).
   SEED_DEMO: "1"

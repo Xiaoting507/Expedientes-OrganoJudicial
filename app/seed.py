@@ -1,14 +1,19 @@
-"""Datos de demostración (solo si SEED_DEMO=1). NO usar en producción real."""
-import os
+"""Datos de demostración (solo si SEED_DEMO=1). NO usar en producción real.
+
+SEC-02 (Sprint 6): la clave sale de SEED_PASSWORD (obligatoria en producción) y, fuera de
+desarrollo, los códigos de consulta se generan con `secrets` en vez de usar los fijos del README.
+"""
+import secrets
 from datetime import date, timedelta
 
 from sqlalchemy.orm import Session
 
 from . import audit
+from .config import APP_ENV, SEED_PASSWORD
 from .models import Actuacion, EstadoExpediente, Expediente, Rol, Usuario
 from .security import hash_password
 
-DEMO_PASSWORD = os.getenv("SEED_PASSWORD", "Demo-Judicial-2026")
+DEMO_PASSWORD = SEED_PASSWORD
 
 
 def cargar(db: Session) -> None:
@@ -33,6 +38,8 @@ def cargar(db: Session) -> None:
         ("laboral", "Ana Castillo", "Constructora Pacífico", j2, hoy - timedelta(days=1), EstadoExpediente.en_audiencia, "C9D0E1F2"),
     ]
     for i, (materia, dte, ddo, juez, limite, estado, codigo) in enumerate(ejemplos, start=1):
+        if APP_ENV != "desarrollo":
+            codigo = secrets.token_hex(4).upper()
         exp = Expediente(numero=f"EXP-{hoy.year}-{i:06d}", materia=materia, demandante=dte, demandado=ddo,
                          descripcion="Expediente de demostración", juez_id=juez.id, abogado_id=(abg.id if i != 2 else None), fecha_limite=limite,
                          estado=estado, codigo_consulta=codigo)

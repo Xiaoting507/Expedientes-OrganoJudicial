@@ -72,6 +72,7 @@ Alertas incluyen vencidos y excluyen archivados y con sentencia
     ${ids_antes}=    Ids De Lista    ${antes.json()}
     List Should Contain Value    ${ids_antes}    ${arch}[id]
     Cambiar Estado    ${H_JUEZ}    ${arch}[id]    archivado
+    Cambiar Estado    ${H_JUEZ}    ${sent}[id]    en_tramite    # RN-05.5: no hay sentencia sin admitir la demanda
     Cambiar Estado    ${H_JUEZ}    ${sent}[id]    con_sentencia
     ${despues}=    GET On Session    api    /api/expedientes/alertas    headers=${H_SEC}    expected_status=200
     ${ids}=    Ids De Lista    ${despues.json()}

@@ -32,6 +32,8 @@ spec:
               valueFrom: {secretKeyRef: {name: app-secrets, key: JWT_SECRET}}
             - name: DATABASE_URL
               valueFrom: {secretKeyRef: {name: app-secrets, key: DATABASE_URL}}
+            - name: SEED_PASSWORD   # SEC-03: clave demo aleatoria por despliegue (la genera el pipeline)
+              valueFrom: {secretKeyRef: {name: app-secrets, key: SEED_PASSWORD, optional: true}}
           startupProbe:
             httpGet: {path: /healthz, port: 8000}
             periodSeconds: 3
@@ -60,9 +62,8 @@ metadata:
   name: expediente-api
   namespace: expediente-judicial
 spec:
-  type: NodePort
+  type: ClusterIP   # SEC-03: ya no se publica en el nodo (antes NodePort 30080); acceso por port-forward o Ingress
   selector: {app: expediente-api}
   ports:
     - port: 80
       targetPort: 8000
-      nodePort: 30080

@@ -33,6 +33,23 @@ class EstadoExpediente(str, enum.Enum):
     archivado = "archivado"
 
 
+E = EstadoExpediente
+# RN-05.5 (DEF-01, Sprint 6): matriz de transiciones permitidas.
+# Un archivado no se reabre y no se dicta sentencia sin admitir la demanda (radicado -> con_sentencia no existe).
+# La misma matriz está en frontend/src/lib/formato.ts para que la interfaz solo ofrezca estos caminos.
+TRANSICIONES: dict[EstadoExpediente, tuple[EstadoExpediente, ...]] = {
+    E.radicado: (E.en_tramite, E.archivado),
+    E.en_tramite: (E.en_audiencia, E.con_sentencia, E.archivado),
+    E.en_audiencia: (E.en_tramite, E.con_sentencia),
+    E.con_sentencia: (E.archivado,),
+    E.archivado: (),
+}
+
+
+def transicion_permitida(desde: EstadoExpediente, hacia: EstadoExpediente) -> bool:
+    return hacia in TRANSICIONES[desde]
+
+
 class Usuario(Base):
     __tablename__ = "usuarios"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -42,6 +59,8 @@ class Usuario(Base):
     rol: Mapped[Rol] = mapped_column(Enum(Rol))
     activo: Mapped[bool] = mapped_column(default=True)
     intentos_fallidos: Mapped[int] = mapped_column(Integer, default=0)
+    # SEC-04: bloqueo temporal (expira solo). `activo=False` queda para desactivar a mano.
+    bloqueado_hasta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Expediente(Base):

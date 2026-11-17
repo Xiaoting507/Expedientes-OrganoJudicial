@@ -43,5 +43,7 @@ echo.
 echo  Para detener el sistema cierra esta ventana.
 echo.
 start "" /b cmd /c "timeout /t 3 >nul & start http://localhost:8000"
+rem SEC-02: los datos demo solo se crean si se piden de forma explicita
+set SEED_DEMO=1
 ".venv\Scripts\python.exe" -m uvicorn app.main:app --port 8000
 pause

@@ -91,10 +91,13 @@ def test_produccion_con_secreto_corto_lanza_runtimeerror(restaurar_config):
 def test_produccion_con_secreto_fuerte_arranca(restaurar_config):
     restaurar_config.setenv("APP_ENV", "produccion")
     restaurar_config.setenv("JWT_SECRET", "x" * 40)
+    restaurar_config.delenv("SEED_DEMO", raising=False)
     assert _recargar_config().APP_ENV == "produccion"
 
 
-def test_desarrollo_acepta_secreto_por_defecto(restaurar_config):
+def test_desarrollo_ya_no_usa_el_secreto_publico(restaurar_config):
+    """SEC-01: antes se aceptaba el valor por defecto publicado; ahora se genera uno aleatorio."""
     restaurar_config.setenv("APP_ENV", "desarrollo")
     restaurar_config.delenv("JWT_SECRET", raising=False)
-    assert _recargar_config().JWT_SECRET.startswith("demo-local")
+    with pytest.warns(UserWarning):
+        assert not _recargar_config().JWT_SECRET.startswith("demo-local")

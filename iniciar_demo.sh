@@ -5,4 +5,4 @@ cd "$(dirname "$0")"
 rm -f expedientes.db
 echo "Abriendo http://localhost:8000  (contraseña: Demo-Judicial-2026)"
 ( sleep 3; (xdg-open http://localhost:8000 || open http://localhost:8000) >/dev/null 2>&1 ) &
-.venv/bin/python -m uvicorn app.main:app --port 8000
+SEED_DEMO=1 .venv/bin/python -m uvicorn app.main:app --port 8000

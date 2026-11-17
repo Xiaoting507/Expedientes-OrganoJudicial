@@ -7,16 +7,22 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
-from .config import SEED_DEMO
+from .config import APP_ENV, SEED_DEMO
 from .db import Base, SessionLocal, engine
-from .routers import admin, auth, expedientes, publico
+from .routers import admin, auth, documentos, expedientes, publico
 
 STATIC = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    Base.metadata.create_all(engine)  # en sprints posteriores: migrar a Alembic
+    if APP_ENV == "produccion":
+        # Sprint 7: en producción el esquema lo gobierna Alembic (migrations/); nunca create_all
+        from .migraciones import actualizar_esquema
+
+        actualizar_esquema()
+    else:
+        Base.metadata.create_all(engine)  # desarrollo, demo y pruebas
     if SEED_DEMO:
         from .seed import cargar
 
@@ -30,7 +36,8 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Expediente Judicial Digital", version="0.1.0", lifespan=lifespan)
+_DOCS = {} if APP_ENV != "produccion" else {"docs_url": None, "redoc_url": None, "openapi_url": None}  # SEC-16
+app = FastAPI(title="Expediente Judicial Digital", version="0.7.0", lifespan=lifespan, **_DOCS)
 
 
 @app.middleware("http")
@@ -42,12 +49,13 @@ async def cabeceras_seguridad(request: Request, call_next):
     resp.headers["Referrer-Policy"] = "no-referrer"
     resp.headers["Content-Security-Policy"] = "default-src 'self'; style-src 'self' 'unsafe-inline'"
     resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    if "server" in resp.headers:
-        del resp.headers["server"]
-    return resp
+    if request.url.path.startswith("/api/"):
+        resp.headers.setdefault("Cache-Control", "no-store")  # SEC-17: datos del caso no se guardan en caché
+    return resp  # SEC-18: la cabecera "server" se quita con uvicorn --no-server-header (Dockerfile)
 
 
 app.include_router(auth.router)
+app.include_router(documentos.router)
 app.include_router(expedientes.router)
 app.include_router(publico.router)
 app.include_router(admin.router)

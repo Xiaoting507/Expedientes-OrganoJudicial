@@ -92,6 +92,7 @@ def test_produccion_con_secreto_fuerte_arranca(restaurar_config):
     restaurar_config.setenv("APP_ENV", "produccion")
     restaurar_config.setenv("JWT_SECRET", "x" * 40)
     restaurar_config.delenv("SEED_DEMO", raising=False)
+    restaurar_config.setenv("AUDIT_KEY", "k" * 64)
     assert _recargar_config().APP_ENV == "produccion"
 
 

@@ -31,6 +31,7 @@ class Config:
     alerta_dias: int
     seed_demo: bool
     seed_password: str
+    audit_key: str
 
 
 def cargar(env: Mapping[str, str]) -> Config:
@@ -56,6 +57,15 @@ def cargar(env: Mapping[str, str]) -> Config:
     if produccion and seed_password == DEMO_PASSWORD_PUBLICA:
         raise ConfiguracionInsegura("APP_ENV=produccion: SEED_PASSWORD no puede ser la clave demo publicada.")
 
+    # SEC-10 (Sprint 7): la bitácora se firma con HMAC; la clave vive fuera de la BD (Secret).
+    audit_key = env.get("AUDIT_KEY", "")
+    if not audit_key:
+        if produccion:
+            raise ConfiguracionInsegura("APP_ENV=produccion: falta AUDIT_KEY para firmar la bitácora.")
+        audit_key = "audit-desarrollo-local"  # fija en desarrollo para que la cadena se pueda verificar entre arranques
+    elif produccion and len(audit_key) < 32:
+        raise ConfiguracionInsegura("APP_ENV=produccion: AUDIT_KEY debe tener al menos 32 caracteres.")
+
     return Config(
         app_env=app_env,
         database_url=env.get("DATABASE_URL", "sqlite:///./expedientes.db"),
@@ -65,6 +75,7 @@ def cargar(env: Mapping[str, str]) -> Config:
         alerta_dias=int(env.get("ALERTA_DIAS", "5")),
         seed_demo=seed_demo,
         seed_password=seed_password,
+        audit_key=audit_key,
     )
 
 
@@ -84,3 +95,13 @@ SEED_PASSWORD = CONFIG.seed_password
 # SEC-04: bloqueo temporal de cuentas y límite de fallos por IP
 BLOQUEO_MINUTOS = int(os.getenv("BLOQUEO_MINUTOS", "15"))
 LOGIN_MAX_FALLOS_IP = int(os.getenv("LOGIN_MAX_FALLOS_IP", "20"))
+
+# SEC-07 (Sprint 7): consultas públicas fallidas por IP antes de responder 429
+CONSULTA_MAX_FALLOS_IP = int(os.getenv("CONSULTA_MAX_FALLOS_IP", "10"))
+
+# SEC-10 (Sprint 7): clave HMAC de la bitácora
+AUDIT_KEY = CONFIG.audit_key
+
+# HU-10 (Sprint 7): documentos PDF del expediente
+DOCUMENTOS_DIR = os.getenv("DOCUMENTOS_DIR", "./documentos")
+MAX_PDF_MB = int(os.getenv("MAX_PDF_MB", "10"))

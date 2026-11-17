@@ -35,5 +35,14 @@ def test_produccion_con_seed_demo_exige_seed_password():
 
 
 def test_produccion_valida_arranca():
-    c = cargar({"APP_ENV": "produccion", "JWT_SECRET": SECRETO, "SEED_DEMO": "1", "SEED_PASSWORD": "Clave-Aleatoria-CI-9f3a"})
+    c = cargar({"APP_ENV": "produccion", "JWT_SECRET": SECRETO, "SEED_DEMO": "1", "SEED_PASSWORD": "Clave-Aleatoria-CI-9f3a",
+                "AUDIT_KEY": "k" * 64})
     assert c.seed_demo and c.seed_password == "Clave-Aleatoria-CI-9f3a" and not c.jwt_secret_generado
+
+
+def test_sec10_produccion_sin_audit_key_no_arranca():
+    """SEC-10 (Sprint 7): la bitácora se firma con una clave que vive fuera de la BD."""
+    with pytest.raises(ConfiguracionInsegura, match="AUDIT_KEY"):
+        cargar({"APP_ENV": "produccion", "JWT_SECRET": SECRETO})
+    with pytest.raises(ConfiguracionInsegura, match="AUDIT_KEY"):
+        cargar({"APP_ENV": "produccion", "JWT_SECRET": SECRETO, "AUDIT_KEY": "corta"})

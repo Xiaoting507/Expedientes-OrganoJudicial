@@ -117,3 +117,19 @@ class Auditoria(Base):
     ip: Mapped[str] = mapped_column(String(64), default="")
     hash_anterior: Mapped[str] = mapped_column(String(64))
     hash: Mapped[str] = mapped_column(String(64))
+    # SEC-09/10 (Sprint 7): 1 = SHA-256 original; 2 = HMAC-SHA256 que también cubre expediente_id e ip
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+
+
+class Documento(Base):
+    """HU-10 (Sprint 7): PDF adjunto al expediente, con su huella SHA-256 para probar que no cambió."""
+    __tablename__ = "documentos"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    expediente_id: Mapped[int] = mapped_column(ForeignKey("expedientes.id"), index=True)
+    nombre: Mapped[str] = mapped_column(String(160))
+    tamano: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(String(64), index=True)
+    subido_por: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
+    fecha: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)
+
+    usuario: Mapped[Usuario] = relationship()

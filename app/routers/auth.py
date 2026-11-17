@@ -3,6 +3,10 @@
 SEC-04 (Sprint 6): el bloqueo por 5 intentos dura BLOQUEO_MINUTOS (15) y expira solo,
 así nadie puede dejar fuera al administrador para siempre. Además hay un límite de
 fallos por IP (429 con Retry-After) contra el password spraying.
+
+SEC-05 (Sprint 7): sin enumeración de usuarios. Un usuario inexistente gasta el mismo
+PBKDF2 que uno real, y el estado de bloqueo o desactivación solo se revela a quien
+ya demostró conocer la contraseña; a los demás se les responde siempre 401 genérico.
 """
 from datetime import datetime, timedelta, timezone
 
@@ -15,11 +19,12 @@ from ..db import get_db
 from ..limites import VentanaFallos
 from ..models import Usuario
 from ..schemas import LoginIn, TokenOut, UsuarioOut
-from ..security import MAX_INTENTOS, crear_token, usuario_actual, verificar_password
+from ..security import MAX_INTENTOS, crear_token, hash_password, usuario_actual, verificar_password
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 fallos_por_ip = VentanaFallos(maximo=LOGIN_MAX_FALLOS_IP, segundos=BLOQUEO_MINUTOS * 60)
+_HASH_FICTICIO = hash_password("usuario-inexistente")  # SEC-05: mismo costo de PBKDF2 que un usuario real
 
 
 def _ip(request: Request) -> str:
@@ -50,25 +55,33 @@ def login(datos: LoginIn, request: Request, db: Session = Depends(get_db)):
     error = HTTPException(status.HTTP_401_UNAUTHORIZED, "Usuario o contraseña incorrectos")
 
     if usuario is None:
+        verificar_password(datos.password, _HASH_FICTICIO)
         fallos_por_ip.registrar(ip)
         audit.registrar(db, usuario=datos.username, accion="LOGIN_FALLIDO", entidad="usuario",
                         entidad_id="-", request=request)
         db.commit()
         raise error
 
-    if not usuario.activo:
-        raise HTTPException(status.HTTP_423_LOCKED, "Cuenta desactivada. Contacte al administrador")
-
     ahora = datetime.now(timezone.utc)
+    clave_ok = verificar_password(datos.password, usuario.password_hash)
     faltan = minutos_restantes(usuario, ahora)
-    if faltan:
+
+    if not usuario.activo or faltan:
+        fallos_por_ip.registrar(ip)
+        audit.registrar(db, usuario=datos.username, accion="LOGIN_FALLIDO", entidad="usuario",
+                        entidad_id=usuario.id, request=request)
+        db.commit()
+        if not clave_ok:  # SEC-05: sin la clave no se revela si la cuenta está bloqueada
+            raise error
+        if not usuario.activo:
+            raise HTTPException(status.HTTP_423_LOCKED, "Cuenta desactivada. Contacte al administrador")
         raise HTTPException(status.HTTP_423_LOCKED,
                             f"Cuenta bloqueada temporalmente por intentos fallidos. Intente en {faltan} minutos.",
                             headers={"Retry-After": str(faltan * 60)})
     if usuario.bloqueado_hasta is not None:  # el bloqueo ya venció: empieza de cero
         usuario.bloqueado_hasta, usuario.intentos_fallidos = None, 0
 
-    if not verificar_password(datos.password, usuario.password_hash):
+    if not clave_ok:
         fallos_por_ip.registrar(ip)
         usuario.intentos_fallidos += 1
         accion = "LOGIN_FALLIDO"

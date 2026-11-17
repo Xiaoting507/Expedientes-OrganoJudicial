@@ -31,6 +31,10 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: "3.12", cache: pip}
       - run: pip install -r requirements-dev.txt
+      - name: Dependencias sin vulnerabilidades conocidas (pip-audit, SEC-22)
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt
       - name: Pruebas unitarias + cobertura (pytest)
         run: |
           pip install pytest pytest-cov
@@ -103,6 +107,7 @@ jobs:
             --from-literal=JWT_SECRET=$(openssl rand -hex 32) \
             --from-literal=POSTGRES_PASSWORD=$PASS \
             --from-literal=SEED_PASSWORD=$SEED_PASS \
+            --from-literal=AUDIT_KEY=$(openssl rand -hex 32) \
             --from-literal=DATABASE_URL=postgresql+psycopg://judicial:$PASS@postgres:5432/expedientes
           # ConfigMap de staging: APP_ENV=produccion (JWT_SECRET de 64 hex cumple >=32) y SEED_DEMO="1"
           # porque Robot corre contra el cluster y necesita usuarios demo. En producción real: SEED_DEMO="0".

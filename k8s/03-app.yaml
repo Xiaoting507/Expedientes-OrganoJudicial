@@ -34,6 +34,10 @@ spec:
               valueFrom: {secretKeyRef: {name: app-secrets, key: DATABASE_URL}}
             - name: SEED_PASSWORD   # SEC-03: clave demo aleatoria por despliegue (la genera el pipeline)
               valueFrom: {secretKeyRef: {name: app-secrets, key: SEED_PASSWORD, optional: true}}
+            - name: AUDIT_KEY   # SEC-10 (Sprint 7): clave HMAC de la bitácora, fuera de la BD
+              valueFrom: {secretKeyRef: {name: app-secrets, key: AUDIT_KEY}}
+            - name: DOCUMENTOS_DIR   # HU-10 (Sprint 7)
+              value: /data/documentos
           startupProbe:
             httpGet: {path: /healthz, port: 8000}
             periodSeconds: 3
@@ -53,8 +57,14 @@ spec:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities: {drop: ["ALL"]}
-          volumeMounts: [{name: tmp, mountPath: /tmp}]
-      volumes: [{name: tmp, emptyDir: {}}]
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+            - {name: documentos, mountPath: /data/documentos}
+      volumes:
+        - {name: tmp, emptyDir: {}}
+        # HU-10: en staging basta emptyDir; en producción real usar un PersistentVolumeClaim ReadWriteMany
+        # (las 2 réplicas deben ver los mismos PDF) o un almacenamiento de objetos.
+        - {name: documentos, emptyDir: {}}
 ---
 apiVersion: v1
 kind: Service

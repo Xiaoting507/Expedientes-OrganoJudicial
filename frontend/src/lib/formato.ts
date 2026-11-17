@@ -19,6 +19,8 @@ export const ACCIONES: Record<string, string> = {
   CREAR_EXPEDIENTE: 'Creó el expediente', CONSULTAR_EXPEDIENTE: 'Consultó el expediente', CAMBIAR_ESTADO: 'Cambió el estado',
   AGREGAR_ACTUACION: 'Agregó una actuación', LOGIN: 'Inició sesión', LOGIN_OK: 'Inició sesión', LOGIN_FALLIDO: 'Intento de acceso fallido',
   CONSULTA_PUBLICA: 'Consulta pública', CONSULTA_PUBLICA_FALLIDA: 'Consulta pública fallida',
+  SUBIR_DOCUMENTO: 'Adjuntó un PDF', DESCARGAR_DOCUMENTO: 'Descargó un PDF', DOCUMENTO_ALTERADO: 'PDF alterado (huella no coincide)',
+  CUENTA_BLOQUEADA: 'Cuenta bloqueada 15 min',
 }
 
 export const materia = (m: string) => MATERIAS[m] ?? m

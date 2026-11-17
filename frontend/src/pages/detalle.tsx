@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/misc'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AccionBadge, EstadoBadge, Plazo } from '@/components/comunes'
+import { Documentos } from '@/components/documentos'
 import type { AccionCmd } from '@/components/layout'
 
 function Progreso({ estado }: { estado: Estado }) {
@@ -92,10 +93,11 @@ export function Detalle() {
 
   async function agregarActuacion() {
     setErrAccion('')
-    if (act.tipo.trim().length < 3 || act.detalle.trim().length < 3) { setErrAccion('El tipo y el detalle necesitan al menos 3 caracteres.'); tipoRef.current?.focus(); return }
+    const tipo = rol === 'abogado' ? 'escrito' : act.tipo.trim()  // DEF-05: el abogado solo presenta escritos
+    if (tipo.length < 3 || act.detalle.trim().length < 3) { setErrAccion('El tipo y el detalle necesitan al menos 3 caracteres.'); tipoRef.current?.focus(); return }
     setEnviando(true)
     try {
-      await post(`/api/expedientes/${id}/actuaciones`, { tipo: act.tipo.trim(), detalle: act.detalle.trim() })
+      await post(`/api/expedientes/${id}/actuaciones`, { tipo, detalle: act.detalle.trim() })
       toast.success(rol === 'abogado' ? 'Escrito registrado' : 'Actuación registrada')
       setAct({ tipo: '', detalle: '' }); setAud(null)
       await cargar(); recargar()
@@ -231,9 +233,11 @@ export function Detalle() {
                 <CardDescription>Se agrega al historial con tu usuario y la hora.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4">
-                <Campo label="Tipo" htmlFor="a-tipo">
-                  <Input ref={tipoRef} id="a-tipo" value={act.tipo} onChange={(e) => setAct((x) => ({ ...x, tipo: e.target.value }))} placeholder="Notificación, auto, audiencia…" />
-                </Campo>
+                {rol !== 'abogado' && (
+                  <Campo label="Tipo" htmlFor="a-tipo">
+                    <Input ref={tipoRef} id="a-tipo" value={act.tipo} onChange={(e) => setAct((x) => ({ ...x, tipo: e.target.value }))} placeholder="Notificación, auto, audiencia…" />
+                  </Campo>
+                )}
                 <Campo label="Detalle" htmlFor="a-detalle">
                   <Textarea id="a-detalle" rows={3} value={act.detalle} onChange={(e) => setAct((x) => ({ ...x, detalle: e.target.value }))} placeholder="Descripción de la actuación" />
                 </Campo>
@@ -242,6 +246,7 @@ export function Detalle() {
               </CardContent>
             </Card>
           )}
+          <Documentos expId={exp.id} rol={rol} estado={exp.estado} onCambio={() => setAud(null)} />
           <Card className="bg-muted/40 gap-3 shadow-none">
             <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><UserRound className="text-muted-foreground size-4" /> Consulta ciudadana</CardTitle></CardHeader>
             <CardContent className="text-muted-foreground text-sm">Las partes consultan el estado con el número de expediente y su código. No ven nombres ni actuaciones.</CardContent>

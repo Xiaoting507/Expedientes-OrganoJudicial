@@ -114,3 +114,21 @@ class AuditoriaOut(BaseModel):
     despues: str
     ip: str
     hash: str
+
+
+class DocumentoOut(BaseModel):
+    """HU-10 (Sprint 7)."""
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    expediente_id: int
+    nombre: str
+    tamano: int
+    sha256: str
+    subido_por: int
+    fecha: datetime
+
+
+class VerificacionDocumentoOut(BaseModel):
+    integro: bool
+    sha256_guardado: str
+    sha256_actual: str | None

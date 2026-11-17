@@ -16,6 +16,9 @@ export interface RegistroAuditoria {
   id: number; fecha: string; usuario: string; accion: string; entidad: string; entidad_id: string
   expediente_id: number | null; antes: string; despues: string; ip: string; hash: string
 }
+// HU-10 (Sprint 7)
+export interface Documento { id: number; expediente_id: number; nombre: string; tamano: number; sha256: string; subido_por: number; fecha: string }
+export interface VerificacionDocumento { integro: boolean; sha256_guardado: string; sha256_actual: string | null }
 export interface Verificacion { integra: boolean; registros: number; roto_en_id?: number }
 export interface ConsultaPublica { numero: string; materia: string; estado: Estado; actualizado_en: string; ultima_actuacion: string | null }
 
@@ -45,3 +48,21 @@ export async function api<T>(path: string, opts: RequestInit = {}): Promise<T> {
 }
 
 export const post = <T>(path: string, body: unknown) => api<T>(path, { method: 'POST', body: JSON.stringify(body) })
+
+// HU-10: subir un PDF (multipart) y descargarlo como blob con su huella SHA-256
+async function errorDe(r: Response) {
+  const data = await r.json().catch(() => null)
+  const d = data?.detail
+  return new ApiError(typeof d === 'string' ? d : 'No se pudo completar la operación.', r.status)
+}
+export async function subirArchivo<T>(path: string, archivo: File): Promise<T> {
+  const fd = new FormData(); fd.append('archivo', archivo)
+  const r = await fetch(path, { method: 'POST', body: fd, headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  if (!r.ok) throw await errorDe(r)
+  return (await r.json()) as T
+}
+export async function descargarArchivo(path: string): Promise<{ blob: Blob; sha256: string | null }> {
+  const r = await fetch(path, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  if (!r.ok) throw await errorDe(r)
+  return { blob: await r.blob(), sha256: r.headers.get('X-Content-SHA256') }
+}

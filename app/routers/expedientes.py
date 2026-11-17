@@ -42,6 +42,9 @@ from ..security import requiere_rol, usuario_actual
 router = APIRouter(prefix="/api/expedientes", tags=["expedientes"])
 
 TODOS = (Rol.juez, Rol.secretario, Rol.abogado, Rol.admin)
+# DEF-05 / SEC-13 (Sprint 7): tipos que solo genera el sistema y expedientes que ya no admiten escritos
+TIPOS_RESERVADOS = {"radicacion", "cambio_estado"}
+CERRADOS = (EstadoExpediente.con_sentencia, EstadoExpediente.archivado)
 
 
 def _snapshot(exp: Expediente) -> dict:
@@ -53,6 +56,10 @@ def _snapshot(exp: Expediente) -> dict:
         "abogado_id": exp.abogado_id,
         "fecha_limite": exp.fecha_limite,
     }
+
+
+def obtener_expediente(db: Session, exp_id: int, usuario: Usuario) -> Expediente:
+    return _obtener(db, exp_id, usuario)
 
 
 def _obtener(db: Session, exp_id: int, usuario: Usuario) -> Expediente:
@@ -96,6 +103,8 @@ def listar(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(requiere_rol(*TODOS)),
 ):
+    if plazo_desde and plazo_hasta and plazo_desde > plazo_hasta:  # DEF-03 (HU-08, criterio 6)
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "plazo_desde no puede ser posterior a plazo_hasta")
     consulta = db.query(Expediente)
     if usuario.rol == Rol.juez:
         consulta = consulta.filter(Expediente.juez_id == usuario.id)
@@ -236,7 +245,14 @@ def agregar_actuacion(
     usuario: Usuario = Depends(requiere_rol(Rol.secretario, Rol.juez, Rol.abogado)),
 ):
     exp = _obtener(db, exp_id, usuario)
-    act = Actuacion(expediente_id=exp.id, tipo=datos.tipo, detalle=datos.detalle, usuario_id=usuario.id)
+    tipo = datos.tipo.strip().lower()
+    if tipo in TIPOS_RESERVADOS:  # DEF-05: nadie simula un cambio de estado o una radicación
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"El tipo «{tipo}» lo registra solo el sistema")
+    if usuario.rol == Rol.abogado and tipo != "escrito":
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "El abogado solo puede presentar escritos")
+    if exp.estado == EstadoExpediente.archivado or (usuario.rol == Rol.abogado and exp.estado in CERRADOS):
+        raise HTTPException(status.HTTP_409_CONFLICT, "El expediente está cerrado y no admite nuevos escritos")
+    act = Actuacion(expediente_id=exp.id, tipo=tipo, detalle=datos.detalle, usuario_id=usuario.id)
     db.add(act)
     db.flush()
     audit.registrar(db, usuario=usuario.username, accion="AGREGAR_ACTUACION", entidad="actuacion",

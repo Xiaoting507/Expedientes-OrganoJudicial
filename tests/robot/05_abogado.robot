@@ -57,6 +57,12 @@ Abogado recibe 403 al consultar la auditoria
     GET On Session    api    /api/auditoria    headers=${H_ABG}    expected_status=403
     GET On Session    api    /api/expedientes/${EXP1}[id]/auditoria    headers=${H_ABG}    expected_status=403
 
+Abogado no puede registrar un cambio de estado falso
+    [Documentation]    DEF-05 / SEC-13 (Sprint 7): el abogado solo presenta escritos; los tipos del sistema se rechazan.
+    [Tags]    DEF-05
+    ${body}=    Create Dictionary    tipo=cambio_estado    detalle=en_tramite -> con_sentencia: falso
+    POST On Session    api    /api/expedientes/${EXP1}[id]/actuaciones    json=${body}    headers=${H_ABG}    expected_status=422
+
 *** Keywords ***
 Preparar Datos
     Abrir Sesion API

@@ -11,6 +11,7 @@ if str(RAIZ) not in sys.path:
 _TMP = tempfile.mkdtemp(prefix="expedientes-test-")
 os.environ["DATABASE_URL"] = f"sqlite:///{Path(_TMP, 'test.db').as_posix()}"
 os.environ["SEED_DEMO"] = "1"
+os.environ["DOCUMENTOS_DIR"] = str(Path(_TMP, "documentos"))
 os.environ.pop("APP_ENV", None)
 
 import pytest  # noqa: E402

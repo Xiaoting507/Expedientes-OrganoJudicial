@@ -55,7 +55,7 @@ Fecha de detección de todos: 2026-10-19.
 | SEC-27 | A03 Inyección (XSS) | `app/static/app.js:53,113-118,136-143,296-298` | Valores sin `esc()` dentro de `innerHTML`, pero todos son numéricos o constantes: `t` y `v` del nav (`:53`, literales), `e.id` y `x.id` (enteros de la API, `:117,136,137,143`), `v.registros` y `v.roto_en_id` (enteros, `:297-298`) y la salida de `fechaHora` (`:289`, `:248`, construida con números). Hoy no es explotable. Fragilidad si el esquema cambia. | Info | Pasar todo por `esc()` o `Number()` como defensa en profundidad. | Abierto |
 | SEC-28 | (proceso) | `security/openvas/README.md` | El escaneo OpenVAS del Sprint 5 contra el staging **está PENDIENTE DE EJECUCIÓN**. No hay resultados de red, TLS ni versiones de servicios. Este informe es solo revisión estática. | Info | Ejecutar con la guía "Escaneo Sprint 5" y registrar los resultados. | Abierto |
 
-Estado al cierre del Sprint 7: Altos 0 abiertos (4 cerrados) · Medios 3 abiertos (SEC-08, SEC-12, SEC-14) · Bajos 7 abiertos y 2 parciales · Info 3 · en total 15 de 28 sin cerrar (Sprint 6: 23) · OpenVAS (SEC-28) sigue pendiente.
+Estado al cierre del Sprint 7: Altos 0 abiertos (4 cerrados) · Medios 3 abiertos (SEC-08, SEC-12, SEC-14) · Bajos 7 abiertos y 2 parciales · Info 3 · en total 15 de 28 sin cerrar (Sprint 6: 24) · OpenVAS (SEC-28) sigue pendiente.
 
 Conteo por severidad (informe original): Crítica 0 | Alta 4 (SEC-01..04) | Media 10 (SEC-05..14) | Baja 11 (SEC-15..25) | Info 3 (SEC-26..28).
 

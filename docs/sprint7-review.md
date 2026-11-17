@@ -46,7 +46,7 @@ Commits del sprint: `198aac7`, `f8d2a11`, `554c11b`, `9195b81`.
 
 - Cerrados en el sprint: SEC-05, SEC-06, SEC-07, SEC-09, SEC-10, SEC-11, SEC-13, SEC-16 y SEC-18.
 - Parciales: SEC-17 y SEC-22 (`pip-audit` ya corre en el pipeline: 0 vulnerabilidades).
-- Sin cerrar: 15 de 28 (Sprint 6: 23). Altos: 0.
+- Sin cerrar: 15 de 28 (Sprint 6: 24). Altos: 0.
 - Pendiente: OpenVAS (SEC-28). La máquina del equipo no tiene Docker corriendo ni el feed de Greenbone.
 
 ## Horas y costo (estimado tarea por tarea)

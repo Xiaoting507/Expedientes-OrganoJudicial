@@ -69,7 +69,11 @@ export function Documentos({ expId, rol, estado, onCambio }: { expId: number; ro
         {docs?.length === 0 && <p className="text-muted-foreground text-sm">Aún no hay documentos adjuntos.</p>}
         {docs?.map((d) => (
           <div key={d.id} className="flex items-start gap-3 rounded-lg border p-3">
-            {integridad[d.id] === false ? <ShieldAlert className="text-destructive mt-0.5 size-4 shrink-0" /> : <ShieldCheck className="text-emerald-600 mt-0.5 size-4 shrink-0" />}
+            {integridad[d.id] === false
+              ? <ShieldAlert className="text-destructive mt-0.5 size-4 shrink-0" aria-label="Alterado" />
+              : integridad[d.id] === true
+                ? <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" aria-label="Íntegro" />
+                : <FileText className="text-muted-foreground mt-0.5 size-4 shrink-0" aria-label="Sin verificar" />}
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium" title={d.nombre}>{d.nombre}</p>
               <p className="text-muted-foreground text-xs">{tamano(d.tamano)} · {fechaHora(d.fecha)}</p>

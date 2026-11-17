@@ -1,5 +1,7 @@
 # Registro de defectos (QA)
 
+> Sprint 7 (2026-11-16): DEF-03 confirmado por el PO y cerrado (422 si plazo_desde > plazo_hasta); DEF-05 cerrado. No quedan defectos abiertos.
+>
 > Actualizado en el Sprint 6 (2026-11-07): DEF-01 y DEF-02 cerrados, DEF-04 detectado y cerrado en el sprint, DEF-05 abierto (Baja).
 
 Fecha de deteccion: 2026-10-19 · Rama `sprint5` · Detectados con pytest (`tests/unit/test_api.py`, marcados `xfail strict`: cuando se corrijan, la prueba pasara a XPASS y fallara hasta quitar el marcador).
@@ -30,7 +32,7 @@ Fecha de deteccion: 2026-10-19 · Rama `sprint5` · Detectados con pytest (`test
 - **Corrección:** `frontend/src/lib/formato.ts::utc` y formato fijo en hora de Panamá (`America/Panama`).
 
 ## DEF-05 — El abogado puede presentar escritos en expedientes cerrados y con tipos reservados
-- **HU:** HU-07 · **Severidad:** Baja · **Estado:** Abierto (pasa al Sprint 7; relacionado con SEC-13)
+- **HU:** HU-07 · **Severidad:** Baja · **Estado:** Cerrado en el Sprint 7 (9 días). Tipos reservados → 422; abogado solo `escrito`; expediente cerrado → 409
 - **Pasos:** el abogado hace `POST /api/expedientes/{id}/actuaciones` sobre un expediente `archivado`, o con `tipo=cambio_estado`.
 - **Esperado:** 409 en expedientes cerrados; el abogado solo registra `escrito`. **Obtenido:** 201.
 

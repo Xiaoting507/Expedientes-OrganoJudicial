@@ -36,7 +36,8 @@ export async function api<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const data = await r.json().catch(() => null)
   if (!r.ok) {
     const d = data?.detail
-    const err = new ApiError(typeof d === 'string' ? d : 'Revisa los datos ingresados.', r.status)
+    const msg = typeof d === 'string' ? d : typeof d?.mensaje === 'string' ? d.mensaje : 'Revisa los datos ingresados.'
+    const err = new ApiError(msg, r.status)
     if (Array.isArray(d)) err.campos = d
     throw err
   }

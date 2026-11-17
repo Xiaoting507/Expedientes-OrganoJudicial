@@ -4,6 +4,14 @@ export const ESTADOS: Record<Estado, string> = {
   radicado: 'Radicado', en_tramite: 'En trámite', en_audiencia: 'En audiencia', con_sentencia: 'Con sentencia', archivado: 'Archivado',
 }
 export const ORDEN_ESTADOS = Object.keys(ESTADOS) as Estado[]
+// RN-05.5 (DEF-01): misma matriz que app/models.py::TRANSICIONES. La interfaz solo ofrece estos caminos.
+export const TRANSICIONES: Record<Estado, Estado[]> = {
+  radicado: ['en_tramite', 'archivado'],
+  en_tramite: ['en_audiencia', 'con_sentencia', 'archivado'],
+  en_audiencia: ['en_tramite', 'con_sentencia'],
+  con_sentencia: ['archivado'],
+  archivado: [],
+}
 export const MATERIAS: Record<string, string> = { civil: 'Civil', familia: 'Familia', laboral: 'Laboral', penal: 'Penal' }
 export const ROLES: Record<Rol, string> = { secretario: 'Secretario judicial', juez: 'Juez', admin: 'Administrador', abogado: 'Abogado' }
 export const TIPOS: Record<string, string> = { radicacion: 'Radicación', cambio_estado: 'Cambio de estado' }
@@ -18,16 +26,22 @@ export const accion = (a: string) => ACCIONES[a] ?? a.toLowerCase().replace(/_/g
 export const tituloBandeja = (rol: Rol) => (rol === 'juez' ? 'Mis expedientes' : rol === 'abogado' ? 'Mis casos' : 'Expedientes')
 
 const p2 = (n: number) => String(n).padStart(2, '0')
+// DEF-04: el backend guarda en UTC y SQLite devuelve la fecha sin zona; sin la 'Z' el navegador la leía
+// como hora local y la bitácora salía 5 horas adelantada. utc() la marca como UTC y se muestra en hora de Panamá.
+export const utc = (iso: string) => (/(Z|[+-]\d{2}:?\d{2})$/i.test(iso) ? iso : `${iso}Z`)
+const HORA_PANAMA = new Intl.DateTimeFormat('es-PA', {
+  timeZone: 'America/Panama', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+})
 export const fecha = (iso: string | null) => (iso ? iso.slice(0, 10).split('-').reverse().join('/') : '—')
 export const fechaHora = (iso: string) => {
-  const d = new Date(iso)
-  return `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()} ${p2(d.getHours())}:${p2(d.getMinutes())}`
+  const p = Object.fromEntries(HORA_PANAMA.formatToParts(new Date(utc(iso))).map((x) => [x.type, x.value]))
+  return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`
 }
 export const hoyIso = () => { const d = new Date(); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}` }
 export const isoMasDias = (n: number) => { const d = new Date(Date.now() + n * 864e5); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}` }
 
 export function haceCuanto(iso: string) {
-  const s = (Date.now() - new Date(iso).getTime()) / 1000
+  const s = (Date.now() - new Date(utc(iso)).getTime()) / 1000
   if (s < 60) return 'hace un momento'
   if (s < 3600) return `hace ${Math.floor(s / 60)} min`
   if (s < 86400) return `hace ${Math.floor(s / 3600)} h`

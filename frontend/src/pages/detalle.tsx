@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ArrowLeft, Briefcase, CalendarClock, Check, Clock, FileClock, Gavel, Hash, Loader2, PenLine, Scale, ShieldCheck, UserRound } from 'lucide-react'
 import { api, post, type ApiError, type Estado, type ExpedienteDetalle, type RegistroAuditoria } from '@/lib/api'
-import { ESTADOS, ORDEN_ESTADOS, TIPOS, cambioEstado, fecha, fechaHora, haceCuanto, materia } from '@/lib/formato'
+import { ESTADOS, ORDEN_ESTADOS, TIPOS, TRANSICIONES, cambioEstado, fecha, fechaHora, haceCuanto, materia } from '@/lib/formato'
 import { useSesion } from '@/lib/sesion'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -116,7 +116,7 @@ export function Detalle() {
   const juez = jueces.find((j) => j.id === exp.juez_id)?.nombre ?? (rol === 'juez' ? sesion!.nombre : exp.juez_id ? `Juez #${exp.juez_id}` : 'Sin asignar')
   const abogado = abogados.find((a) => a.id === exp.abogado_id)?.nombre ?? (rol === 'abogado' ? sesion!.nombre : exp.abogado_id ? `Abogado #${exp.abogado_id}` : 'Sin abogado')
   const actuaciones = exp.actuaciones.slice().reverse()
-  const opciones = ORDEN_ESTADOS.filter((k) => k !== 'radicado' && k !== exp.estado)
+  const opciones = TRANSICIONES[exp.estado]
 
   return (
     <div className="space-y-6">
@@ -209,6 +209,7 @@ export function Detalle() {
                 <CardDescription>El cambio queda en el historial y en la bitácora.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4">
+                {opciones.length === 0 && <p className="text-muted-foreground text-sm">Este expediente está archivado: ya no admite cambios de estado.</p>}
                 <Campo label="Nuevo estado" htmlFor="d-nuevo">
                   <Select value={nuevoEstado} onValueChange={(v) => setNuevoEstado(v as Estado)}>
                     <SelectTrigger id="d-nuevo"><SelectValue placeholder="Selecciona el estado" /></SelectTrigger>
@@ -219,7 +220,7 @@ export function Detalle() {
                   <Textarea ref={motivoRef} id="d-motivo" rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej. Se admite la demanda" />
                 </Campo>
                 {errAccion && <p role="alert" className="text-destructive text-sm">{errAccion}</p>}
-                <Button onClick={cambiarEstado} disabled={enviando}>{enviando ? <Loader2 className="animate-spin" /> : <Check />} Cambiar estado</Button>
+                <Button onClick={cambiarEstado} disabled={enviando || opciones.length === 0}>{enviando ? <Loader2 className="animate-spin" /> : <Check />} Cambiar estado</Button>
               </CardContent>
             </Card>
           )}

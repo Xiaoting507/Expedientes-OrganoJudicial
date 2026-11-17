@@ -5,3 +5,6 @@ results/
 *.pyc
 .coverage
 coverage.xml
+
+# HU-10: PDF subidos en desarrollo (Sprint 7)
+documentos/

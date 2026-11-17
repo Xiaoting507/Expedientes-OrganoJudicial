@@ -444,3 +444,15 @@ document.addEventListener('keydown', (e) => {
   else if (!enCampo && sinMod && e.key === '/') { e.preventDefault(); abrirCmd(); }
   else if (!enCampo && sinMod && e.key.toLowerCase() === 'n' && token && rol === 'secretario' && $('cmd').classList.contains('hidden')) { e.preventDefault(); nuevoExpediente(); }
 });
+
+// Botón «Copiar número» (feature/ui-daniela, integrado con el Sprint 7)
+$('btn-copiar').addEventListener('click', async () => {
+  const btn = $('btn-copiar');
+  try {
+    await navigator.clipboard.writeText($('d-numero').textContent);
+    btn.textContent = '¡Copiado!';
+  } catch {
+    btn.textContent = 'No se pudo copiar';
+  }
+  setTimeout(() => { btn.textContent = 'Copiar número'; }, 1500);
+});

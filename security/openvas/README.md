@@ -55,6 +55,30 @@ Deja en `reportes/` el XML completo y un resumen `.md` con conteo High/Medium/Lo
 
 ---
 
+## Escaneo Sprint 8 (ejecutado)
+
+**Fecha:** 2026-11-24 (UTC) · **Herramienta:** Greenbone Community Edition 28.7.0 (OpenVAS) en Docker Desktop ·
+**Scan Config:** Full and fast · **Objetivo:** `host.docker.internal` (192.168.65.254), el equipo donde corre el
+sistema con `uvicorn app.main:app --host 0.0.0.0 --port 8000` y los datos demo.
+
+| Severidad | Cantidad |
+| --- | --- |
+| Critical | 0 |
+| High | 0 |
+| Medium | 1 |
+| Low | 1 |
+| Log | 53 |
+
+| Hallazgo | Severidad | Puerto | De quién es | Acción |
+| --- | --- | --- | --- | --- |
+| DCE/RPC and MSRPC Services Enumeration Reporting | 5.0 Medium | 135/tcp | Servicio RPC de Windows del equipo anfitrión, no del sistema | Aceptado: en staging/producción el sistema corre en un contenedor Linux sin el puerto 135 |
+| TCP Timestamps Information Disclosure | 2.6 Low | general/tcp | Pila TCP del sistema operativo anfitrión | Aceptado (riesgo bajo); en el nodo de Kubernetes se puede desactivar `net.ipv4.tcp_timestamps` |
+
+**Puerto del sistema (8000/tcp): ningún hallazgo** más allá de los registros informativos (Log).
+OpenVAS no reemplaza la revisión estática: SEC-12 y SEC-14 (TLS) siguen abiertos en `INFORME-SEGURIDAD.md`.
+Recomendación: repetir el escaneo en cada sprint contra el staging de Kubernetes, con la lista de puertos
+limitada a los del sistema.
+
 ## Escaneo Sprint 5
 
 > **ESTADO: PENDIENTE DE EJECUCIÓN.** Esta sección es solo la guía. A 2026-10-19 no se ha corrido el

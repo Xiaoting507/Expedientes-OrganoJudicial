@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { ArrowRight, Info, Loader2, Lock, SearchCheck } from 'lucide-react'
-import { api, type ApiError, type ConsultaPublica } from '@/lib/api'
+import { post, type ApiError, type ConsultaPublica } from '@/lib/api'
 import { ESTADOS, ORDEN_ESTADOS, TIPOS, fechaHora, materia } from '@/lib/formato'
 import { useTema } from '@/lib/sesion'
 import { cn } from '@/lib/utils'
@@ -21,7 +21,7 @@ export function Consulta() {
     e.preventDefault()
     setError(''); setRes(null); setCargando(true)
     try {
-      setRes(await api<ConsultaPublica>(`/api/publico/consulta?${new URLSearchParams({ numero: numero.trim(), codigo: codigo.trim() })}`))
+      setRes(await post<ConsultaPublica>('/api/publico/consulta', { numero: numero.trim(), codigo: codigo.trim() }))
     } catch (x) {
       setError((x as ApiError).status === 429 ? (x as ApiError).message : 'Número o código de consulta incorrecto. Revísalos en la boleta que te entregó el juzgado.')
     } finally { setCargando(false) }

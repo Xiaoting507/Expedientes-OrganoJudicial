@@ -116,10 +116,10 @@ def test_bitacora_solo_admin_y_cadena_integra(client, tokens):
 
 def test_consulta_publica(client, tokens, ids):
     exp = _crear(client, tokens, ids)
-    ok = client.get("/api/publico/consulta", params={"numero": exp["numero"], "codigo": exp["codigo_consulta"]})
+    ok = client.post("/api/publico/consulta", json={"numero": exp["numero"], "codigo": exp["codigo_consulta"]})
     assert ok.status_code == 200 and "demandante" not in ok.json()
-    mal = client.get("/api/publico/consulta", params={"numero": exp["numero"], "codigo": "ZZZZZZZZ"})
-    inex = client.get("/api/publico/consulta", params={"numero": "EXP-0000-000000", "codigo": "ZZZZZZZZ"})
+    mal = client.post("/api/publico/consulta", json={"numero": exp["numero"], "codigo": "ZZZZZZZZ"})
+    inex = client.post("/api/publico/consulta", json={"numero": "EXP-0000-000000", "codigo": "ZZZZZZZZ"})
     assert mal.status_code == inex.status_code == 404 and mal.json() == inex.json()
 
 

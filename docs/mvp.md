@@ -108,7 +108,7 @@ Control de acceso: `security/INFORME-SEGURIDAD.md` sección 4 no encontró IDOR 
 
 ### 3.4 Consulta ciudadana sin ir al juzgado
 
-- `GET /api/publico/consulta` con número y código de consulta. No requiere login (RN-04.1).
+- `POST /api/publico/consulta` con número y código de consulta en el cuerpo (Sprint 8, SEC-08). No requiere login (RN-04.1).
 - Responde el mismo 404 si el número no existe o el código es incorrecto (no revela si el expediente existe).
 - No expone demandante, demandado ni el detalle de actuaciones (HU-04, criterio 4).
 - La página `consulta.html` se publica en `static/`.

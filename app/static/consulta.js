@@ -5,8 +5,12 @@ const TIPOS = { radicacion: 'Radicación', cambio_estado: 'Cambio de estado' };
 document.getElementById('f').addEventListener('submit', async (e) => {
   e.preventDefault();
   const res = document.getElementById('res');
-  const p = new URLSearchParams({ numero: document.getElementById('numero').value, codigo: document.getElementById('codigo').value });
-  const r = await fetch(`/api/publico/consulta?${p}`);
+  // SEC-08: el código va en el cuerpo del POST, no en la URL
+  const r = await fetch('/api/publico/consulta', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ numero: document.getElementById('numero').value, codigo: document.getElementById('codigo').value }),
+  });
   const d = await r.json();
   res.innerHTML = '';
   const el = document.createElement('div');

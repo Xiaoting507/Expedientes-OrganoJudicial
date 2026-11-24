@@ -21,6 +21,7 @@ def ahora() -> datetime:
 class Rol(str, enum.Enum):
     juez = "juez"
     secretario = "secretario"
+    abogado = "abogado"
     admin = "admin"
 
 
@@ -32,6 +33,23 @@ class EstadoExpediente(str, enum.Enum):
     archivado = "archivado"
 
 
+E = EstadoExpediente
+# RN-05.5 (DEF-01, Sprint 6): matriz de transiciones permitidas.
+# Un archivado no se reabre y no se dicta sentencia sin admitir la demanda (radicado -> con_sentencia no existe).
+# La misma matriz está en frontend/src/lib/formato.ts para que la interfaz solo ofrezca estos caminos.
+TRANSICIONES: dict[EstadoExpediente, tuple[EstadoExpediente, ...]] = {
+    E.radicado: (E.en_tramite, E.archivado),
+    E.en_tramite: (E.en_audiencia, E.con_sentencia, E.archivado),
+    E.en_audiencia: (E.en_tramite, E.con_sentencia),
+    E.con_sentencia: (E.archivado,),
+    E.archivado: (),
+}
+
+
+def transicion_permitida(desde: EstadoExpediente, hacia: EstadoExpediente) -> bool:
+    return hacia in TRANSICIONES[desde]
+
+
 class Usuario(Base):
     __tablename__ = "usuarios"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -41,6 +59,8 @@ class Usuario(Base):
     rol: Mapped[Rol] = mapped_column(Enum(Rol))
     activo: Mapped[bool] = mapped_column(default=True)
     intentos_fallidos: Mapped[int] = mapped_column(Integer, default=0)
+    # SEC-04: bloqueo temporal (expira solo). `activo=False` queda para desactivar a mano.
+    bloqueado_hasta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Expediente(Base):
@@ -53,13 +73,15 @@ class Expediente(Base):
     descripcion: Mapped[str] = mapped_column(Text, default="")
     estado: Mapped[EstadoExpediente] = mapped_column(Enum(EstadoExpediente), default=EstadoExpediente.radicado)
     juez_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)
+    abogado_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)  # abogado de parte
     fecha_limite: Mapped[date | None] = mapped_column(Date, nullable=True)  # próximo plazo procesal (PB-06)
     codigo_consulta: Mapped[str] = mapped_column(String(20))  # lo recibe el ciudadano para consulta pública (PB-05)
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)
     actualizado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora, onupdate=ahora)
 
     actuaciones: Mapped[list["Actuacion"]] = relationship(back_populates="expediente", order_by="Actuacion.id")
-    juez: Mapped[Usuario | None] = relationship()
+    juez: Mapped[Usuario | None] = relationship(foreign_keys=[juez_id])
+    abogado: Mapped[Usuario | None] = relationship(foreign_keys=[abogado_id])
 
 
 class Actuacion(Base):
@@ -89,8 +111,25 @@ class Auditoria(Base):
     accion: Mapped[str] = mapped_column(String(60))  # LOGIN_OK, CREAR_EXPEDIENTE, CAMBIAR_ESTADO...
     entidad: Mapped[str] = mapped_column(String(40))
     entidad_id: Mapped[str] = mapped_column(String(40))
+    expediente_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)  # fuera del hash
     antes: Mapped[str] = mapped_column(Text, default="")  # JSON
     despues: Mapped[str] = mapped_column(Text, default="")  # JSON
     ip: Mapped[str] = mapped_column(String(64), default="")
     hash_anterior: Mapped[str] = mapped_column(String(64))
     hash: Mapped[str] = mapped_column(String(64))
+    # SEC-09/10 (Sprint 7): 1 = SHA-256 original; 2 = HMAC-SHA256 que también cubre expediente_id e ip
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+
+
+class Documento(Base):
+    """HU-10 (Sprint 7): PDF adjunto al expediente, con su huella SHA-256 para probar que no cambió."""
+    __tablename__ = "documentos"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    expediente_id: Mapped[int] = mapped_column(ForeignKey("expedientes.id"), index=True)
+    nombre: Mapped[str] = mapped_column(String(160))
+    tamano: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(String(64), index=True)
+    subido_por: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
+    fecha: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)
+
+    usuario: Mapped[Usuario] = relationship()

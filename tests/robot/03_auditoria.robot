@@ -9,6 +9,9 @@ Cambio de estado queda en la bitacora con antes y despues
     ${hs}=    Login Como    secretario1
     ${exp}=    Crear Expediente De Prueba    ${hs}
     ${hj}=    Login Como    juez1
+    # RN-05.5 (Sprint 6): primero se admite la demanda; no se salta de radicado a audiencia
+    ${admite}=    Create Dictionary    estado=en_tramite    motivo=Se admite la demanda
+    POST On Session    api    /api/expedientes/${exp}[id]/estado    json=${admite}    headers=${hj}    expected_status=200
     ${body}=    Create Dictionary    estado=en_audiencia    motivo=Se fija audiencia
     POST On Session    api    /api/expedientes/${exp}[id]/estado    json=${body}    headers=${hj}
     ${ha}=    Login Como    admin1
@@ -17,7 +20,7 @@ Cambio de estado queda en la bitacora con antes y despues
     ${ultimo}=    Set Variable    ${resp.json()}[0]
     Should Be Equal    ${ultimo}[accion]    CAMBIAR_ESTADO
     Should Be Equal    ${ultimo}[usuario]    juez1
-    Should Contain    ${ultimo}[antes]    radicado
+    Should Contain    ${ultimo}[antes]    en_tramite
     Should Contain    ${ultimo}[despues]    en_audiencia
 
 Login fallido tambien queda registrado

@@ -8,3 +8,5 @@ docs
 __pycache__
 .venv
 results
+documentos
+frontend/node_modules

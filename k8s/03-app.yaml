@@ -15,9 +15,11 @@ spec:
     metadata:
       labels: {app: expediente-api}
     spec:
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
+        seccompProfile: {type: RuntimeDefault}
       containers:
         - name: api
           image: expediente-api:latest   # el pipeline lo reemplaza por la imagen con el SHA del commit
@@ -30,6 +32,16 @@ spec:
               valueFrom: {secretKeyRef: {name: app-secrets, key: JWT_SECRET}}
             - name: DATABASE_URL
               valueFrom: {secretKeyRef: {name: app-secrets, key: DATABASE_URL}}
+            - name: SEED_PASSWORD   # SEC-03: clave demo aleatoria por despliegue (la genera el pipeline)
+              valueFrom: {secretKeyRef: {name: app-secrets, key: SEED_PASSWORD, optional: true}}
+            - name: AUDIT_KEY   # SEC-10 (Sprint 7): clave HMAC de la bitácora, fuera de la BD
+              valueFrom: {secretKeyRef: {name: app-secrets, key: AUDIT_KEY}}
+            - name: DOCUMENTOS_DIR   # HU-10 (Sprint 7)
+              value: /data/documentos
+          startupProbe:
+            httpGet: {path: /healthz, port: 8000}
+            periodSeconds: 3
+            failureThreshold: 20
           readinessProbe:
             httpGet: {path: /healthz, port: 8000}
             initialDelaySeconds: 5
@@ -45,8 +57,14 @@ spec:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities: {drop: ["ALL"]}
-          volumeMounts: [{name: tmp, mountPath: /tmp}]
-      volumes: [{name: tmp, emptyDir: {}}]
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+            - {name: documentos, mountPath: /data/documentos}
+      volumes:
+        - {name: tmp, emptyDir: {}}
+        # HU-10: en staging basta emptyDir; en producción real usar un PersistentVolumeClaim ReadWriteMany
+        # (las 2 réplicas deben ver los mismos PDF) o un almacenamiento de objetos.
+        - {name: documentos, emptyDir: {}}
 ---
 apiVersion: v1
 kind: Service
@@ -54,9 +72,8 @@ metadata:
   name: expediente-api
   namespace: expediente-judicial
 spec:
-  type: NodePort
+  type: ClusterIP   # SEC-03: ya no se publica en el nodo (antes NodePort 30080); acceso por port-forward o Ingress
   selector: {app: expediente-api}
   ports:
     - port: 80
       targetPort: 8000
-      nodePort: 30080

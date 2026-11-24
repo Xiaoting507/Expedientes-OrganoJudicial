@@ -155,7 +155,7 @@ Puntos: propuesta de este documento; se confirman en el planning del Sprint 5.
 
 **Criterios de aceptación**
 
-1. **Dado** que tengo el número y el código correctos, **cuando** hago `GET /api/publico/consulta?numero=…&codigo=…`, **entonces** recibo `200` con `numero`, `materia`, `estado`, `actualizado_en` y `ultima_actuacion` (solo el tipo).
+1. **Dado** que tengo el número y el código correctos, **cuando** hago `POST /api/publico/consulta` con `{numero, codigo}` en el cuerpo (Sprint 8, SEC-08: el código no viaja en la URL), **entonces** recibo `200` con `numero`, `materia`, `estado`, `actualizado_en` y `ultima_actuacion` (solo el tipo).
 2. **Dado** que el código es incorrecto, **cuando** consulto, **entonces** recibo `404` "Número o código de consulta incorrecto".
 3. **Dado** que el número no existe, **cuando** consulto, **entonces** recibo el mismo `404` y mensaje que en el criterio 2 (no revela si el expediente existe).
 4. **Dado** que la consulta es exitosa, **cuando** reviso la respuesta, **entonces** no contiene `demandante`, `demandado` ni el detalle de las actuaciones.
@@ -357,7 +357,7 @@ Puntos: propuesta de este documento; se confirman en el planning del Sprint 5.
 | HU-01 | PB-01 | `app/routers/expedientes.py` · `POST /api/expedientes`, `GET /api/expedientes/{id}`, `PATCH /api/expedientes/{id}` | `02_expedientes.robot` · PB-01 (el `PATCH` no tiene prueba) | Implementada |
 | HU-02 | PB-02 | `app/security.py`, `app/routers/auth.py` · `POST /api/auth/login`, `GET /api/auth/me`; `app/routers/admin.py` · `POST /api/usuarios/{id}/desbloquear` | `01_autenticacion.robot` · PB-02 | Implementada |
 | HU-03 | PB-03 | `app/audit.py`, `app/routers/admin.py` · `GET /api/auditoria`, `GET /api/auditoria/verificar` | `03_auditoria.robot` · PB-03 (criterio 5 sin prueba) | Implementada |
-| HU-04 | PB-05 (PB-04 en cabeceras) | `app/routers/publico.py` · `GET /api/publico/consulta`; `static/consulta.*` | `04_consulta_publica.robot` · PB-05 | Implementada |
+| HU-04 | PB-05 (PB-04 en cabeceras) | `app/routers/publico.py` · `POST /api/publico/consulta`; `static/consulta.*` | `04_consulta_publica.robot` · PB-05 | Implementada |
 | HU-05 | PB-01 y PB-03 | `app/routers/expedientes.py` · `POST /api/expedientes/{id}/estado` | `02_expedientes.robot` · PB-01; `03_auditoria.robot` · PB-03 | Implementada |
 | HU-06 | PB-06 | `app/routers/expedientes.py` · `GET /api/expedientes/alertas` | `02_expedientes.robot` · PB-06 (prueba débil, ver R-06.1) | Implementada |
 | HU-07 | PB-01 (extensión) | `app/models.py` (`Rol.abogado`, `abogado_id`), `app/routers/expedientes.py` · `_obtener`, `GET /api/abogados` | `05_abogado.robot` · HU-07 | Implementada – Sprint 5 |

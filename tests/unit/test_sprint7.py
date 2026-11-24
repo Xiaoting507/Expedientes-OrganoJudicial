@@ -99,9 +99,9 @@ def test_sec07_consulta_publica_429_tras_muchos_fallos(client):
     fallos_consulta.maximo = 3
     try:
         for _ in range(3):
-            r = client.get("/api/publico/consulta", params={"numero": "EXP-2026-999999", "codigo": "ZZZZZZZZ"})
+            r = client.post("/api/publico/consulta", json={"numero": "EXP-2026-999999", "codigo": "ZZZZZZZZ"})
             assert r.status_code == 404
-        r = client.get("/api/publico/consulta", params={"numero": "EXP-2026-000001", "codigo": "A1B2C3D4"})
+        r = client.post("/api/publico/consulta", json={"numero": "EXP-2026-000001", "codigo": "A1B2C3D4"})
         assert r.status_code == 429 and int(r.headers["retry-after"]) > 0
     finally:
         fallos_consulta.maximo = original

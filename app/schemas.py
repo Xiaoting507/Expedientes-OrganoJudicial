@@ -93,6 +93,12 @@ class ExpedienteDetalleOut(ExpedienteOut):
     actuaciones: list[ActuacionOut]
 
 
+class ConsultaPublicaIn(BaseModel):
+    """SEC-08: número y código van en el cuerpo del POST, nunca en la URL."""
+    numero: str = Field(min_length=1, max_length=40)
+    codigo: str = Field(min_length=1, max_length=16)
+
+
 class ConsultaPublicaOut(BaseModel):
     numero: str
     materia: str

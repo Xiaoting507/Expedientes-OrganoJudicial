@@ -61,13 +61,20 @@ Deja en `reportes/` el XML completo y un resumen `.md` con conteo High/Medium/Lo
 **Scan Config:** Full and fast · **Objetivo:** `host.docker.internal` (192.168.65.254), el equipo donde corre el
 sistema con `uvicorn app.main:app --host 0.0.0.0 --port 8000` y los datos demo.
 
-| Severidad | Cantidad |
-| --- | --- |
-| Critical | 0 |
-| High | 0 |
-| Medium | 1 |
-| Low | 1 |
-| Log | 53 |
+Se ejecutaron dos corridas sobre el mismo objetivo. La primera se interrumpió al 99 % porque se apagó Docker;
+la segunda terminó (**Done**, 22:29–23:57 UTC, 1 h 27 min) y confirmó el mismo resultado. La prueba que faltaba
+(`gb_generic_http_web_root_dir_trav.nasl`, recorrido de directorios contra la web) no encontró nada.
+
+| Severidad | Corrida 1 (interrumpida al 99 %) | Corrida 2 (Done) |
+| --- | --- | --- |
+| Critical | 0 | **0** |
+| High | 0 | **0** |
+| Medium | 1 | **1** |
+| Low | 1 | **1** |
+| Log | 53 | **55** |
+
+Filtro de la interfaz: `min_qod=70`. Con QoD 50 aparece además "TCP Sequence Number Approximation Reset DoS"
+(5.0, 135/tcp, también del anfitrión Windows); Greenbone lo oculta por baja confiabilidad de la detección.
 
 | Hallazgo | Severidad | Puerto | De quién es | Acción |
 | --- | --- | --- | --- | --- |

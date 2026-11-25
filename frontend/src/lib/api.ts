@@ -20,6 +20,13 @@ export interface RegistroAuditoria {
 export interface Documento { id: number; expediente_id: number; nombre: string; tamano: number; sha256: string; subido_por: number; fecha: string }
 export interface VerificacionDocumento { integro: boolean; sha256_guardado: string; sha256_actual: string | null }
 export interface Verificacion { integra: boolean; registros: number; roto_en_id?: number }
+// HU-12 (Sprint 9): panel de congestión del administrador
+export interface Congestion {
+  fecha: string; total: number; activos: number; vencidos: number; antiguedad_promedio_dias: number; cuello_de_botella: Estado | null
+  por_estado: { estado: Estado; cantidad: number; dias_promedio_en_etapa: number }[]
+  por_juez: { juez_id: number | null; juez: string; activos: number; vencidos: number; antiguedad_promedio_dias: number }[]
+  mas_antiguos: { id: number; numero: string; estado: Estado; materia: string; juez: string; dias: number; en_etapa_dias: number; vencido: boolean }[]
+}
 export interface ConsultaPublica { numero: string; materia: string; estado: Estado; actualizado_en: string; ultima_actuacion: string | null }
 
 export class ApiError extends Error {

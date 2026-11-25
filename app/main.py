@@ -9,7 +9,7 @@ from sqlalchemy import text
 
 from .config import APP_ENV, SEED_DEMO
 from .db import Base, SessionLocal, engine
-from .routers import admin, auth, documentos, expedientes, publico
+from .routers import admin, auth, congestion, documentos, expedientes, publico
 
 STATIC = Path(__file__).parent / "static"
 
@@ -59,6 +59,7 @@ app.include_router(documentos.router)
 app.include_router(expedientes.router)
 app.include_router(publico.router)
 app.include_router(admin.router)
+app.include_router(congestion.router)
 
 
 @app.get("/healthz", tags=["ops"])
@@ -80,6 +81,7 @@ SPA = STATIC / "app" / "index.html"
 @app.get("/expedientes", include_in_schema=False)
 @app.get("/expedientes/{exp_id:int}", include_in_schema=False)
 @app.get("/auditoria", include_in_schema=False)
+@app.get("/congestion", include_in_schema=False)
 def index(exp_id: int | None = None):
     return FileResponse(SPA if SPA.exists() else STATIC / "index.html")
 

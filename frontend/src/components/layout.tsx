@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import * as Popover from '@radix-ui/react-popover'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import {
-  ArrowRight, Bell, FileText, Filter, FolderOpen, Gavel, Globe, LayoutDashboard, LogOut, Menu, Monitor, Moon, PenLine, Plus, Search, ShieldCheck, Sun, X,
+  ArrowRight, Bell, Gauge, FileText, Filter, FolderOpen, Gavel, Globe, LayoutDashboard, LogOut, Menu, Monitor, Moon, PenLine, Plus, Search, ShieldCheck, Sun, X,
 } from 'lucide-react'
 import { useSesion, useTema, type Tema } from '@/lib/sesion'
 import { ESTADOS, MATERIAS, ROLES, iniciales, isoMasDias, hoyIso, materia, tituloBandeja } from '@/lib/formato'
@@ -30,7 +30,10 @@ function Navegacion({ alNavegar }: { alNavegar?: () => void }) {
   const items = [
     { to: '/', icono: LayoutDashboard, texto: 'Inicio', fin: true },
     { to: '/expedientes', icono: FolderOpen, texto: tituloBandeja(sesion.rol), extra: alertas.length || undefined },
-    ...(sesion.rol === 'admin' ? [{ to: '/auditoria', icono: ShieldCheck, texto: 'Bitácora de auditoría' }] : []),
+    ...(sesion.rol === 'admin' ? [
+      { to: '/congestion', icono: Gauge, texto: 'Panel de congestión' },
+      { to: '/auditoria', icono: ShieldCheck, texto: 'Bitácora de auditoría' },
+    ] : []),
   ]
   return (
     <nav className="grid gap-0.5" aria-label="Secciones">
@@ -184,6 +187,7 @@ function Paleta({ open, setOpen, abrirNuevo, setTema }: { open: boolean; setOpen
           )}
           <CommandItem value="ir a inicio panel resumen" onSelect={correr(() => navegar('/'))}><LayoutDashboard /> Ir a Inicio</CommandItem>
           <CommandItem value={`ir a ${tituloBandeja(rol)} bandeja`} onSelect={correr(() => navegar('/expedientes'))}><FolderOpen /> Ir a {tituloBandeja(rol)}</CommandItem>
+          {rol === 'admin' && <CommandItem value="ir a panel de congestion carga jueces" onSelect={correr(() => navegar('/congestion'))}><Gauge /> Ir a Panel de congestión</CommandItem>}
           {rol === 'admin' && <CommandItem value="ir a bitacora auditoria" onSelect={correr(() => navegar('/auditoria'))}><ShieldCheck /> Ir a Bitácora de auditoría</CommandItem>}
           <CommandItem value="consulta ciudadana publica" onSelect={correr(() => window.open('/consulta', '_blank', 'noopener'))}><Globe /> Abrir consulta ciudadana <Sub>otra pestaña</Sub></CommandItem>
         </CommandGroup>

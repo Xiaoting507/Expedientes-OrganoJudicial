@@ -23,6 +23,7 @@ Fuentes: `README.md` (backlog PB-01 a PB-07), `app/routers/*.py` (auth, expedien
 | HU-08 | Bandeja con filtros | Implementada – Sprint 5 | Media | 3 | Daniela Anaya | Javier Pravia |
 | HU-09 | Historial de auditoría en el detalle del expediente | Implementada – Sprint 5 | Media | 3 | Daniela Anaya | Javier Pravia |
 | HU-10 | Adjuntar documentos PDF con hash SHA-256 | Postergada / en rama del equipo | Baja | No estimada | Equipo humano (otra rama) | — |
+| HU-12 | Panel de congestión del administrador | Implementada – Sprint 9 | Alta | 5 | Daniel Pimentel | Jimmy Aizprua |
 
 Responsables transversales: **Leonardo Liang (PO)** acepta cada HU · **Jonathan Quinto (SM)** facilita el refinamiento · **Edwin Cisneros (QA)** define y ejecuta las pruebas Robot de cada HU.
 
@@ -350,6 +351,33 @@ Puntos: propuesta de este documento; se confirman en el planning del Sprint 5.
 
 ---
 
+## HU-12: Panel de congestión del administrador
+
+**Estado:** Implementada – Sprint 9 · **Prioridad:** Alta (decidida por el PO, Leonardo Liang) · **Puntos:** 5 · **Responsable:** Daniel Pimentel (Backend) · **Apoyo:** Jimmy Aizprua (Frontend) · **QA:** Carlos Cedeño
+
+**Historia**
+- **Como** administrador del juzgado,
+- **quiero** ver la carga por juez, los días que los expedientes pasan en cada etapa y los plazos vencidos,
+- **para** saber dónde se atasca el proceso y actuar sobre la congestión con datos.
+
+**Por qué ahora:** hasta el Sprint 8 el sistema visibilizaba casos pero **no medía la congestión** (ver "Límite de la respuesta"). HU-12 cierra esa brecha del Caso 1.
+
+**Criterios de aceptación**
+1. **Dado** que soy administrador, **cuando** consulto `GET /api/congestion`, **entonces** recibo activos, vencidos, antigüedad promedio, cuello de botella, conteo y días promedio por estado, carga por juez y los 5 expedientes activos más antiguos.
+2. **Dado** que soy secretario, juez o abogado, **cuando** consulto el panel, **entonces** recibo `403`; sin token, `401`.
+3. **Dado** un expediente con `fecha_limite` pasada y sin sentencia ni archivo, **cuando** consulto el panel, **entonces** cuenta como vencido, igual que las alertas de HU-06.
+4. **Dado** que un expediente se archiva, **cuando** consulto el panel, **entonces** deja de contar como carga activa de su juez.
+5. **Dado** cualquier consulta al panel, **entonces** la respuesta no incluye nombres de demandante ni demandado.
+
+**Reglas de negocio**
+- RN-12.1: los días en la etapa se cuentan desde el último cambio de estado (actuación `cambio_estado`) o desde la radicación.
+- RN-12.2: activos = todo lo que no está archivado; vencido = plazo anterior a hoy y estado distinto de con sentencia o archivado.
+- RN-12.3: el cuello de botella es la etapa activa con más días promedio.
+
+**Evidencia:** `app/routers/congestion.py`, `frontend/src/pages/congestion.tsx`, `tests/unit/test_hu12.py` (10 casos), `tests/robot/09_congestion.robot` (4 casos).
+
+---
+
 ## Matriz de trazabilidad
 
 | HU | PB | Archivo / endpoint | Prueba Robot (archivo · tag) | Estado |
@@ -364,6 +392,7 @@ Puntos: propuesta de este documento; se confirman en el planning del Sprint 5.
 | HU-08 | PB-01 (extensión) | `app/routers/expedientes.py` · `GET /api/expedientes` (q, estado, materia, juez_id, plazo_desde, plazo_hasta) | `06_filtros.robot` · HU-08 | Implementada – Sprint 5 |
 | HU-09 | PB-03 | `app/routers/expedientes.py` · `GET /api/expedientes/{id}/auditoria`; `app/audit.py` (`expediente_id`) | `07_auditoria_expediente.robot` · HU-09 | Implementada – Sprint 5 |
 | HU-10 | Sin PB | Sin archivo | Sin prueba | Postergada / en rama del equipo |
+| HU-12 | Caso 1 (congestión) | `app/routers/congestion.py` · `GET /api/congestion`; `frontend/src/pages/congestion.tsx` | `09_congestion.robot` · HU-12; `test_hu12.py` | Implementada – Sprint 9 |
 
 ---
 
@@ -383,7 +412,7 @@ Puntos: propuesta de este documento; se confirman en el planning del Sprint 5.
 - **HU-04:** el ciudadano consulta el estado en línea, lo que reduce las visitas a ventanilla para preguntar por el avance.
 - **HU-05 y HU-07:** cada juez ve solo sus casos, y el abogado registra escritos sin depender del secretario.
 
-**Límite de la respuesta:** el sistema **no mide la congestión por sí mismo**. Las HU ayudan a visibilizar y priorizar los casos, pero el impacto real debe demostrarse con métricas (por ejemplo, días promedio por etapa o número de expedientes vencidos). Esas métricas no están en el alcance del Sprint 5.
+**Límite de la respuesta:** el sistema **no mide la congestión por sí mismo**. Las HU ayudan a visibilizar y priorizar los casos, pero el impacto real debe demostrarse con métricas (por ejemplo, días promedio por etapa o número de expedientes vencidos). Esas métricas no estaban en el alcance del Sprint 5. **Sprint 9:** HU-12 las agrega (días promedio por etapa, vencidos, carga por juez y cuello de botella).
 
 ---
 

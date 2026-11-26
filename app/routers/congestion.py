@@ -36,48 +36,75 @@ def _promedio(valores: list[float]) -> float:
     return round(sum(valores) / len(valores), 1) if valores else 0.0
 
 
-def calcular(expedientes: list[Expediente], ultimo_cambio: dict[int, datetime], jueces: dict[int, str],
-             hoy: date, ahora: datetime) -> dict:
-    """Función pura: recibe los datos ya leídos y devuelve los indicadores (se prueba sin base de datos)."""
-    activos = [e for e in expedientes if e.estado != EstadoExpediente.archivado]
-    vencido = {e.id for e in expedientes
-               if e.fecha_limite is not None and e.fecha_limite < hoy and e.estado not in CERRADOS}
-    en_etapa = {e.id: _dias(ultimo_cambio.get(e.id, e.creado_en), ahora) for e in expedientes}
-    edad = {e.id: _dias(e.creado_en, ahora) for e in expedientes}
+SIN_JUEZ = "Sin juez asignado"
 
-    por_estado = []
+
+def _nombre_juez(jueces: dict[int, str], jid: int | None) -> str:
+    return jueces.get(jid, SIN_JUEZ) if jid else SIN_JUEZ
+
+
+def _vencidos(expedientes: list[Expediente], hoy: date) -> set[int]:
+    """Misma regla que las alertas de PB-06: plazo anterior a hoy y sin sentencia ni archivo."""
+    return {e.id for e in expedientes
+            if e.fecha_limite is not None and e.fecha_limite < hoy and e.estado not in CERRADOS}
+
+
+def _por_estado(expedientes: list[Expediente], en_etapa: dict[int, float]) -> list[dict]:
+    filas = []
     for est in ORDEN:
         grupo = [e for e in expedientes if e.estado == est]
-        por_estado.append({"estado": est.value, "cantidad": len(grupo),
-                           "dias_promedio_en_etapa": _promedio([en_etapa[e.id] for e in grupo])})
+        filas.append({"estado": est.value, "cantidad": len(grupo),
+                      "dias_promedio_en_etapa": _promedio([en_etapa[e.id] for e in grupo])})
+    return filas
 
-    por_juez = []
+
+def _por_juez(activos: list[Expediente], vencido: set[int], edad: dict[int, float],
+              jueces: dict[int, str]) -> list[dict]:
+    filas = []
     for jid in sorted({e.juez_id for e in activos}, key=lambda j: (j is None, j or 0)):
         grupo = [e for e in activos if e.juez_id == jid]
-        por_juez.append({
+        filas.append({
             "juez_id": jid,
-            "juez": jueces.get(jid, "Sin juez asignado") if jid else "Sin juez asignado",
+            "juez": _nombre_juez(jueces, jid),
             "activos": len(grupo),
             "vencidos": sum(e.id in vencido for e in grupo),
             "antiguedad_promedio_dias": _promedio([edad[e.id] for e in grupo]),
         })
-    por_juez.sort(key=lambda j: (-j["vencidos"], -j["activos"]))
+    return sorted(filas, key=lambda j: (-j["vencidos"], -j["activos"]))
 
+
+def _cuello_de_botella(por_estado: list[dict]) -> str | None:
+    """La etapa activa (sin archivado) con más días promedio; None si no hay expedientes activos."""
+    cuello = max(por_estado[:-1], key=lambda x: (x["dias_promedio_en_etapa"], x["cantidad"]))
+    return cuello["estado"] if cuello["cantidad"] else None
+
+
+def _mas_antiguos(activos: list[Expediente], edad: dict[int, float], en_etapa: dict[int, float],
+                  vencido: set[int], jueces: dict[int, str]) -> list[dict]:
     antiguos = sorted(activos, key=lambda e: -edad[e.id])[:TOP_ANTIGUOS]
-    cuello = max(por_estado[:-1], key=lambda x: (x["dias_promedio_en_etapa"], x["cantidad"]))  # sin archivado
+    return [{"id": e.id, "numero": e.numero, "estado": e.estado.value, "materia": e.materia,
+             "juez": _nombre_juez(jueces, e.juez_id), "dias": round(edad[e.id], 1),
+             "en_etapa_dias": round(en_etapa[e.id], 1), "vencido": e.id in vencido} for e in antiguos]
+
+
+def calcular(expedientes: list[Expediente], ultimo_cambio: dict[int, datetime], jueces: dict[int, str],
+             hoy: date, ahora: datetime) -> dict:
+    """Función pura: recibe los datos ya leídos y devuelve los indicadores (se prueba sin base de datos)."""
+    activos = [e for e in expedientes if e.estado != EstadoExpediente.archivado]
+    vencido = _vencidos(expedientes, hoy)
+    en_etapa = {e.id: _dias(ultimo_cambio.get(e.id, e.creado_en), ahora) for e in expedientes}
+    edad = {e.id: _dias(e.creado_en, ahora) for e in expedientes}
+    por_estado = _por_estado(expedientes, en_etapa)
     return {
         "fecha": hoy.isoformat(),
         "total": len(expedientes),
         "activos": len(activos),
         "vencidos": len(vencido),
         "antiguedad_promedio_dias": _promedio([edad[e.id] for e in activos]),
-        "cuello_de_botella": cuello["estado"] if cuello["cantidad"] else None,
+        "cuello_de_botella": _cuello_de_botella(por_estado),
         "por_estado": por_estado,
-        "por_juez": por_juez,
-        "mas_antiguos": [{"id": e.id, "numero": e.numero, "estado": e.estado.value, "materia": e.materia,
-                          "juez": jueces.get(e.juez_id, "Sin juez asignado") if e.juez_id else "Sin juez asignado",
-                          "dias": round(edad[e.id], 1), "en_etapa_dias": round(en_etapa[e.id], 1),
-                          "vencido": e.id in vencido} for e in antiguos],
+        "por_juez": _por_juez(activos, vencido, edad, jueces),
+        "mas_antiguos": _mas_antiguos(activos, edad, en_etapa, vencido, jueces),
     }
 
 

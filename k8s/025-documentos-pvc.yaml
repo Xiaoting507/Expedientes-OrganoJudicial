@@ -1,0 +1,12 @@
+# Sprint 9 – PDF de HU-10 en un volumen compartido por todas las réplicas de la app.
+# Antes era un emptyDir por pod: con 2 réplicas, un PDF subido por una no existía en la otra.
+# Staging (kind, un solo nodo): ReadWriteOnce basta, porque las réplicas corren en el mismo nodo.
+# Producción con varios nodos: usar k8s/produccion/025-documentos-pvc.yaml (ReadWriteMany).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: documentos
+  namespace: expediente-judicial
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources: {requests: {storage: 2Gi}}

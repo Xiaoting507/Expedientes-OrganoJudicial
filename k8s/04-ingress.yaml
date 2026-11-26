@@ -1,0 +1,34 @@
+# SEC-14 (Sprint 9): entrada HTTPS al sistema. HTTP se redirige a HTTPS (308) y el HSTS que ya envía
+# la app (main.py) pasa a tener efecto. Requiere el controlador ingress-nginx y el certificado expediente-tls.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: expediente
+  namespace: expediente-judicial
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # HU-10: los PDF pueden pesar hasta 10 MB (la app responde 413 por encima); nginx trae 1 MB por defecto
+    nginx.ingress.kubernetes.io/proxy-body-size: "11m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [localhost, expediente.local]
+      secretName: expediente-tls
+  # ingress-nginx solo usa el certificado de "tls" para los hosts que aparecen en las reglas;
+  # una regla sin host recibe el certificado falso por defecto del controlador.
+  rules:
+    - host: localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: {name: expediente-api, port: {number: 80}}
+    - host: expediente.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: {name: expediente-api, port: {number: 80}}

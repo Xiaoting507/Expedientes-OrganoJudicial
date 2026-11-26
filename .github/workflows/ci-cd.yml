@@ -137,6 +137,8 @@ jobs:
           kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8443:443 8081:80 &
           kubectl -n expediente-judicial get secret expediente-tls -o jsonpath='{.data.ca\.crt}' | base64 -d > ca.crt
           for i in $(seq 1 30); do curl -sf --cacert ca.crt https://localhost:8443/healthz && break; sleep 2; done
+          echo "Certificado que entrega el Ingress:"
+          curl -skv https://localhost:8443/healthz 2>&1 | grep -E "subject:|issuer:|subjectAltName" || true
           echo "1) HTTPS con el certificado verificado contra la CA:"
           curl -sf --cacert ca.crt https://localhost:8443/healthz
           echo; echo "2) HTTP redirige a HTTPS:"

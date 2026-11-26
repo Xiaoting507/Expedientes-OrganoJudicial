@@ -15,8 +15,18 @@ spec:
   tls:
     - hosts: [localhost, expediente.local]
       secretName: expediente-tls
+  # ingress-nginx solo usa el certificado de "tls" para los hosts que aparecen en las reglas;
+  # una regla sin host recibe el certificado falso por defecto del controlador.
   rules:
-    - http:
+    - host: localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: {name: expediente-api, port: {number: 80}}
+    - host: expediente.local
+      http:
         paths:
           - path: /
             pathType: Prefix

@@ -1,11 +1,11 @@
 import * as React from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { AlertOctagon, KeyRound, Link2, Loader2, RefreshCw, ShieldAlert, ShieldCheck } from 'lucide-react'
-import { api, type RegistroAuditoria, type Verificacion } from '@/lib/api'
+import { api, type EventoAcceso, type RegistroAuditoria, type Verificacion } from '@/lib/api'
 import { cambioEstado, fechaHora } from '@/lib/formato'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/misc'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AccionBadge, Encabezado } from '@/components/comunes'
@@ -15,8 +15,12 @@ export function Auditoria() {
   const [reg, setReg] = React.useState<RegistroAuditoria[] | null>(null)
   const [ver, setVer] = React.useState<Verificacion | null>(null)
   const [verificando, setVerificando] = React.useState(false)
+  const [accesos, setAccesos] = React.useState<EventoAcceso[] | null>(null)
 
-  const cargar = React.useCallback(() => api<RegistroAuditoria[]>('/api/auditoria?limite=50').then(setReg).catch(() => setReg([])), [])
+  const cargar = React.useCallback(() => Promise.all([
+    api<RegistroAuditoria[]>('/api/auditoria?limite=50').then(setReg).catch(() => setReg([])),
+    api<EventoAcceso[]>('/api/auditoria/accesos?limite=50').then(setAccesos).catch(() => setAccesos([])),
+  ]), [])
   const verificar = React.useCallback(async () => {
     setVerificando(true)
     try { setVer(await api<Verificacion>('/api/auditoria/verificar')); await cargar() } finally { setVerificando(false) }
@@ -28,7 +32,8 @@ export function Auditoria() {
   }, [params, setParams, verificar])
 
   const lista = reg ?? []
-  const fallidos = lista.filter((r) => r.accion.endsWith('FALLIDO') || r.accion.endsWith('FALLIDA')).length
+  const esFallo = (a: string) => a.endsWith('FALLIDO') || a.endsWith('FALLIDA')
+  const fallidos = lista.filter((r) => esFallo(r.accion)).length + (accesos ?? []).filter((e) => esFallo(e.accion)).length
   const cambios = lista.filter((r) => r.accion === 'CAMBIAR_ESTADO').length
   const kpis = [
     { t: 'Registros recientes', v: lista.length, i: Link2, c: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
@@ -88,6 +93,36 @@ export function Auditoria() {
                 <TableCell className="text-[13px]">{cambioEstado(r.antes, r.despues) ?? <span className="text-muted-foreground">—</span>}</TableCell>
                 <TableCell className="text-muted-foreground font-mono text-xs">{r.ip || '—'}</TableCell>
                 <TableCell className="text-muted-foreground pr-5 font-mono text-xs" title={r.hash}>{r.hash.slice(0, 10)}…</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+
+      <Card className="gap-0 overflow-hidden pb-0">
+        <CardHeader className="pb-4">
+          <CardTitle>Accesos anónimos</CardTitle>
+          <CardDescription>Consultas del ciudadano y logins de usuarios que no existen. Van fuera de la cadena (SEC-12): así nadie puede inflar la bitácora sin autenticarse. Se borran solos a los 90 días.</CardDescription>
+        </CardHeader>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="pl-5">Fecha</TableHead>
+              <TableHead>Acción</TableHead>
+              <TableHead>Usuario indicado</TableHead>
+              <TableHead>Referencia</TableHead>
+              <TableHead className="pr-5">IP</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {accesos?.length === 0 && <TableRow><TableCell colSpan={5} className="text-muted-foreground py-6 text-center text-sm">Sin accesos anónimos recientes.</TableCell></TableRow>}
+            {(accesos ?? []).map((e) => (
+              <TableRow key={e.id}>
+                <TableCell className="text-muted-foreground pl-5 font-mono text-xs">{fechaHora(e.fecha)}</TableCell>
+                <TableCell><AccionBadge accion={e.accion} /></TableCell>
+                <TableCell className="font-medium">{e.usuario}</TableCell>
+                <TableCell className="text-muted-foreground font-mono text-xs">{e.referencia || '—'}</TableCell>
+                <TableCell className="text-muted-foreground pr-5 font-mono text-xs">{e.ip || '—'}</TableCell>
               </TableRow>
             ))}
           </TableBody>

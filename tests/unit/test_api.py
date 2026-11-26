@@ -102,7 +102,10 @@ def test_historial_por_expediente_y_permisos(client, tokens, ids):
     r = client.get(url, headers=tokens["secretario1"])
     assert r.status_code == 200
     acciones = [x["accion"] for x in r.json()]
-    assert acciones[0] == "CREAR_EXPEDIENTE" and "CONSULTAR_EXPEDIENTE" in acciones
+    # RN-09.2 (Sprint 9): por defecto el historial muestra solo cambios; las consultas, a pedido
+    assert acciones[0] == "CREAR_EXPEDIENTE" and "CONSULTAR_EXPEDIENTE" not in acciones
+    con = client.get(url, params={"incluir_consultas": "true"}, headers=tokens["secretario1"]).json()
+    assert "CONSULTAR_EXPEDIENTE" in [x["accion"] for x in con]
     assert all(x["expediente_id"] == exp["id"] for x in r.json())
     assert client.get(url, headers=tokens["juez2"]).status_code == 403
     assert client.get(url, headers=tokens["abogado1"]).status_code == 403

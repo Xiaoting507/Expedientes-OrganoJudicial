@@ -19,6 +19,8 @@ export interface RegistroAuditoria {
 // HU-10 (Sprint 7)
 export interface Documento { id: number; expediente_id: number; nombre: string; tamano: number; sha256: string; subido_por: number; fecha: string }
 export interface VerificacionDocumento { integro: boolean; sha256_guardado: string; sha256_actual: string | null }
+// SEC-12 (Sprint 9): evento anónimo fuera de la cadena (consulta ciudadana, login de usuario inexistente)
+export interface EventoAcceso { id: number; fecha: string; accion: string; usuario: string; referencia: string; ip: string }
 export interface Verificacion { integra: boolean; registros: number; roto_en_id?: number }
 // HU-12 (Sprint 9): panel de congestión del administrador
 export interface Congestion {

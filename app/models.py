@@ -133,3 +133,19 @@ class Documento(Base):
     fecha: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)
 
     usuario: Mapped[Usuario] = relationship()
+
+
+class EventoAcceso(Base):
+    """SEC-12 (Sprint 9): eventos anónimos fuera de la cadena de la bitácora.
+
+    Consultas del ciudadano y logins con un usuario inexistente no tienen un actor identificado:
+    si se encadenaran, cualquiera podría inflar la bitácora oficial sin autenticarse. Se guardan aquí,
+    sin hash, y se borran solos después de EVENTOS_RETENCION_DIAS (rotación).
+    """
+    __tablename__ = "eventos_acceso"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    fecha: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora, index=True)
+    accion: Mapped[str] = mapped_column(String(60), index=True)
+    usuario: Mapped[str] = mapped_column(String(60))  # lo que escribió quien intentó (no está verificado)
+    referencia: Mapped[str] = mapped_column(String(40), default="")  # p. ej. el número de expediente consultado
+    ip: Mapped[str] = mapped_column(String(64), default="")

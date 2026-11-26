@@ -60,11 +60,17 @@ spec:
           volumeMounts:
             - {name: tmp, mountPath: /tmp}
             - {name: documentos, mountPath: /data/documentos}
+            - {name: postgres-ca, mountPath: /etc/postgres-ca, readOnly: true}   # SEC-14: verify-full
       volumes:
         - {name: tmp, emptyDir: {}}
         # HU-10: en staging basta emptyDir; en producción real usar un PersistentVolumeClaim ReadWriteMany
         # (las 2 réplicas deben ver los mismos PDF) o un almacenamiento de objetos.
         - {name: documentos, emptyDir: {}}
+        # SEC-14 (Sprint 9): solo la CA, para que la app verifique el certificado de PostgreSQL
+        - name: postgres-ca
+          secret:
+            secretName: postgres-tls
+            items: [{key: ca.crt, path: ca.crt}]
 ---
 apiVersion: v1
 kind: Service
@@ -72,7 +78,7 @@ metadata:
   name: expediente-api
   namespace: expediente-judicial
 spec:
-  type: ClusterIP   # SEC-03: ya no se publica en el nodo (antes NodePort 30080); acceso por port-forward o Ingress
+  type: ClusterIP   # SEC-03: ya no se publica en el nodo; SEC-14: se entra por el Ingress HTTPS (k8s/04-ingress.yaml)
   selector: {app: expediente-api}
   ports:
     - port: 80

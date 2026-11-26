@@ -1,0 +1,63 @@
+# SEC-14 (Sprint 9): certificados con cert-manager.
+# Cadena propia de staging: emisor autofirmado -> CA del sistema -> certificados de PostgreSQL y de la web.
+# En producción real se reemplaza "expediente-ca-issuer" del certificado web por un ClusterIssuer público
+# (por ejemplo Let's Encrypt con ACME) y "localhost" por el dominio real.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: autofirmado
+  namespace: expediente-judicial
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: expediente-ca
+  namespace: expediente-judicial
+spec:
+  isCA: true
+  commonName: Expediente Judicial CA (staging)
+  secretName: expediente-ca
+  duration: 8760h   # 1 año
+  privateKey: {algorithm: ECDSA, size: 256}
+  issuerRef: {name: autofirmado, kind: Issuer}
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: expediente-ca-issuer
+  namespace: expediente-judicial
+spec:
+  ca: {secretName: expediente-ca}
+---
+# Certificado del servidor PostgreSQL: la app lo verifica con sslmode=verify-full (nombre "postgres").
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: postgres-tls
+  namespace: expediente-judicial
+spec:
+  secretName: postgres-tls
+  duration: 2160h   # 90 días; cert-manager lo renueva solo
+  dnsNames:
+    - postgres
+    - postgres.expediente-judicial.svc
+    - postgres.expediente-judicial.svc.cluster.local
+  privateKey: {algorithm: RSA, size: 2048}
+  usages: [server auth, digital signature, key encipherment]
+  issuerRef: {name: expediente-ca-issuer, kind: Issuer}
+---
+# Certificado de la web (Ingress). "localhost" sirve para el port-forward del pipeline.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: expediente-tls
+  namespace: expediente-judicial
+spec:
+  secretName: expediente-tls
+  duration: 2160h
+  dnsNames: [localhost, expediente.local]
+  privateKey: {algorithm: RSA, size: 2048}
+  usages: [server auth, digital signature, key encipherment]
+  issuerRef: {name: expediente-ca-issuer, kind: Issuer}

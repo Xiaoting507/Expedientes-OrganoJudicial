@@ -91,6 +91,13 @@ jobs:
       - name: Crear cluster Kubernetes de staging
         uses: helm/kind-action@v1
         with: {cluster_name: staging}
+      - name: Instalar cert-manager e ingress-nginx (SEC-14)
+        run: |
+          kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.yaml
+          kubectl label node staging-control-plane ingress-ready=true
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.0/deploy/static/provider/kind/deploy.yaml
+          kubectl -n cert-manager rollout status deployment/cert-manager-webhook --timeout=180s
+          kubectl -n ingress-nginx rollout status deployment/ingress-nginx-controller --timeout=180s
       - name: Construir imagen
         run: docker build -t expediente-api:${{ github.sha }} .
       - name: Cargar imagen al cluster
@@ -108,24 +115,44 @@ jobs:
             --from-literal=POSTGRES_PASSWORD=$PASS \
             --from-literal=SEED_PASSWORD=$SEED_PASS \
             --from-literal=AUDIT_KEY=$(openssl rand -hex 32) \
-            --from-literal=DATABASE_URL=postgresql+psycopg://judicial:$PASS@postgres:5432/expedientes
+            --from-literal=DATABASE_URL="postgresql+psycopg://judicial:$PASS@postgres:5432/expedientes?sslmode=verify-full&sslrootcert=/etc/postgres-ca/ca.crt"
           # ConfigMap de staging: APP_ENV=produccion (JWT_SECRET de 64 hex cumple >=32) y SEED_DEMO="1"
           # porque Robot corre contra el cluster y necesita usuarios demo. En producción real: SEED_DEMO="0".
+          # SEC-14: certificados antes que PostgreSQL (el webhook de cert-manager puede tardar unos segundos)
+          for i in $(seq 1 20); do kubectl apply -f k8s/015-certificados.yaml && break; sleep 6; done
+          kubectl -n expediente-judicial wait --for=condition=Ready certificate --all --timeout=180s
           kubectl apply -f k8s/01-configmap.yaml
           kubectl apply -f k8s/02-postgres.yaml
           kubectl -n expediente-judicial rollout status statefulset/postgres --timeout=180s
           kubectl apply -f k8s/03-app.yaml
           kubectl -n expediente-judicial set image deployment/expediente-api api=expediente-api:${{ github.sha }}
           kubectl -n expediente-judicial rollout status deployment/expediente-api --timeout=180s
-          kubectl -n expediente-judicial get pods -o wide
+          for i in $(seq 1 20); do kubectl apply -f k8s/04-ingress.yaml && break; sleep 6; done
+          kubectl -n expediente-judicial get pods,ingress,certificate -o wide
       - uses: actions/setup-python@v5
         with: {python-version: "3.12", cache: pip}
       - run: pip install robotframework robotframework-requests
-      - name: Pruebas contra el cluster (PostgreSQL real)
+      - name: Verificar TLS (SEC-14)
         run: |
-          kubectl -n expediente-judicial port-forward svc/expediente-api 8080:80 &
-          for i in $(seq 1 30); do curl -sf localhost:8080/healthz && break; sleep 1; done
-          robot --variable BASE_URL:http://localhost:8080 --variable PASSWORD:$SEED_PASS --outputdir results/staging tests/robot
+          kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8443:443 8081:80 &
+          kubectl -n expediente-judicial get secret expediente-tls -o jsonpath='{.data.ca\.crt}' | base64 -d > ca.crt
+          for i in $(seq 1 30); do curl -sf --cacert ca.crt https://localhost:8443/healthz && break; sleep 2; done
+          echo "1) HTTPS con el certificado verificado contra la CA:"
+          curl -sf --cacert ca.crt https://localhost:8443/healthz
+          echo; echo "2) HTTP redirige a HTTPS:"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/healthz)" = "308"
+          echo "308 OK"
+          echo "3) La app habla con PostgreSQL por TLS:"
+          N=$(kubectl -n expediente-judicial exec postgres-0 -- psql -U judicial -d expedientes -Atc \
+            "select count(*) from pg_stat_ssl s join pg_stat_activity a using (pid) where a.usename = 'judicial' and s.ssl")
+          echo "conexiones cifradas de la app: $N"; test "$N" -ge 1
+          echo "4) PostgreSQL rechaza una conexión de red sin TLS:"
+          if kubectl -n expediente-judicial exec postgres-0 -- psql "host=127.0.0.1 sslmode=disable user=judicial dbname=expedientes" -c "select 1"; then
+            echo "ERROR: aceptó una conexión sin TLS"; exit 1
+          fi
+          echo "rechazada OK"
+      - name: Pruebas contra el cluster por HTTPS (PostgreSQL real)
+        run: robot --variable BASE_URL:https://localhost:8443 --variable PASSWORD:$SEED_PASS --outputdir results/staging tests/robot
       - name: Logs si algo falla
         if: failure()
         run: kubectl -n expediente-judicial logs -l app=expediente-api --tail=100

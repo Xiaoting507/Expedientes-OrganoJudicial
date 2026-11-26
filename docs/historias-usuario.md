@@ -325,7 +325,7 @@ Puntos: propuesta de este documento; se confirman en el planning del Sprint 5.
 
 **Reglas de negocio**
 - RN-09.1: el historial incluye los registros cuyo `entidad` = `expediente` y `entidad_id` = id del expediente.
-- RN-09.2 (**decisión pendiente con el PO**): ¿las consultas (`CONSULTAR_EXPEDIENTE`) se muestran en el historial o solo los cambios?
+- RN-09.2 (**decidida por el PO en el Sprint 9**): el historial del expediente muestra **solo los cambios**. Las consultas (`CONSULTAR_EXPEDIENTE`) se siguen registrando en la cadena y se ven con `?incluir_consultas=true`. Evidencia: `test_rn092_*`, Robot 07 «Por defecto el historial muestra solo los cambios».
 - RN-09.3 (**supuesto**): la IP solo la ve el admin.
 - RN-09.4: el endpoint es `GET /api/expedientes/{id}/auditoria` (admin, secretario y juez dueño; el abogado recibe 403).
 
@@ -334,7 +334,7 @@ Puntos: propuesta de este documento; se confirman en el planning del Sprint 5.
 | ID | Riesgo | Prob. | Impacto | Mitigación |
 |---|---|---|---|---|
 | R-09.1 | Mostrar la IP a jueces o secretarios expone datos innecesarios. | Baja | Media | Ocultar la IP fuera del rol admin (RN-09.3). |
-| R-09.2 | Las consultas registradas inflan el historial y dificultan leerlo. | Media | Baja | Decisión de RN-09.2. |
+| R-09.2 | Las consultas registradas inflan el historial y dificultan leerlo. | Media | Baja | Mitigado en el Sprint 9 (RN-09.2). |
 
 ---
 

@@ -138,3 +138,14 @@ class VerificacionDocumentoOut(BaseModel):
     integro: bool
     sha256_guardado: str
     sha256_actual: str | None
+
+
+class EventoAccesoOut(BaseModel):
+    """SEC-12 (Sprint 9): evento anónimo fuera de la cadena."""
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    fecha: datetime
+    accion: str
+    usuario: str
+    referencia: str
+    ip: str

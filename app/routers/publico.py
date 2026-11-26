@@ -9,6 +9,9 @@ después responde 429 con Retry-After (frena la fuerza bruta sobre el código de
 SEC-08 (Sprint 8): el código de consulta es una credencial y ya no viaja en la URL. Se envía en el
 cuerpo de un POST, así no queda en los access logs de uvicorn o del Ingress ni en el historial del
 navegador. El GET anterior responde 405.
+
+SEC-12 (Sprint 9): las consultas del ciudadano son anónimas y ya no entran en la cadena de la
+bitácora; quedan en eventos_acceso (sin hash, con rotación).
 """
 import hmac
 
@@ -39,13 +42,13 @@ def consultar(datos: ConsultaPublicaIn, request: Request, db: Session = Depends(
     # Mismo mensaje si no existe o si el código es incorrecto (no revelar qué expedientes existen)
     if exp is None or not hmac.compare_digest(exp.codigo_consulta, codigo.strip().upper()):
         fallos_consulta.registrar(ip)
-        audit.registrar(db, usuario="ciudadano", accion="CONSULTA_PUBLICA_FALLIDA", entidad="expediente",
-                        entidad_id=numero[:40], request=request)
+        audit.registrar_acceso(db, accion="CONSULTA_PUBLICA_FALLIDA", usuario="ciudadano", referencia=numero,
+                               request=request)
         db.commit()
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Número o código de consulta incorrecto")
     ultima = exp.actuaciones[-1].tipo if exp.actuaciones else None
-    audit.registrar(db, usuario="ciudadano", accion="CONSULTA_PUBLICA", entidad="expediente",
-                    entidad_id=exp.id, request=request)
+    audit.registrar_acceso(db, accion="CONSULTA_PUBLICA", usuario="ciudadano", referencia=exp.numero,
+                           request=request)
     db.commit()
     return ConsultaPublicaOut(numero=exp.numero, materia=exp.materia, estado=exp.estado,
                               actualizado_en=exp.actualizado_en, ultima_actuacion=ultima)

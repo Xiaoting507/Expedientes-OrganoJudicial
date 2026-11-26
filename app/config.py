@@ -98,6 +98,8 @@ LOGIN_MAX_FALLOS_IP = int(os.getenv("LOGIN_MAX_FALLOS_IP", "20"))
 
 # SEC-07 (Sprint 7): consultas públicas fallidas por IP antes de responder 429
 CONSULTA_MAX_FALLOS_IP = int(os.getenv("CONSULTA_MAX_FALLOS_IP", "10"))
+# SEC-12 (Sprint 9): días que se guardan los eventos anónimos (fuera de la cadena) antes de borrarse solos
+EVENTOS_RETENCION_DIAS = int(os.getenv("EVENTOS_RETENCION_DIAS", "90"))
 
 # SEC-10 (Sprint 7): clave HMAC de la bitácora
 AUDIT_KEY = CONFIG.audit_key

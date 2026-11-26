@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 
 from .. import audit
 from ..db import get_db
-from ..models import Auditoria, Rol, Usuario
-from ..schemas import AuditoriaOut, UsuarioIn, UsuarioOut
+from ..models import Auditoria, EventoAcceso, Rol, Usuario
+from ..schemas import AuditoriaOut, EventoAccesoOut, UsuarioIn, UsuarioOut
 from ..security import hash_password, requiere_rol
 
 router = APIRouter(prefix="/api", tags=["administración"])
@@ -65,6 +65,16 @@ def bitacora(entidad: str | None = None, entidad_id: str | None = None, limite: 
     if entidad_id:
         q = q.filter_by(entidad_id=entidad_id)
     return q.order_by(Auditoria.id.desc()).limit(min(limite, 1000)).all()
+
+
+@router.get("/auditoria/accesos", response_model=list[EventoAccesoOut])
+def accesos_anonimos(accion: str | None = None, limite: int = 200,
+                     db: Session = Depends(get_db), _: Usuario = Depends(solo_admin)):
+    """SEC-12 (Sprint 9): eventos anónimos fuera de la cadena (consultas del ciudadano, logins de usuarios inexistentes)."""
+    q = db.query(EventoAcceso)
+    if accion:
+        q = q.filter_by(accion=accion)
+    return q.order_by(EventoAcceso.id.desc()).limit(min(limite, 1000)).all()
 
 
 @router.get("/auditoria/verificar")

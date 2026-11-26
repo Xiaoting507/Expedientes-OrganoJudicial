@@ -7,7 +7,9 @@ Test Tags         HU-09    PB-03    auditoria
 
 *** Test Cases ***
 Historial en orden cronologico con CREAR y CONSULTAR con expediente_id
-    ${resp}=    GET On Session    api    /api/expedientes/${EXP}[id]/auditoria    headers=${H_SEC}    expected_status=200
+    # RN-09.2 (Sprint 9): las consultas se piden con incluir_consultas=true
+    ${params}=    Create Dictionary    incluir_consultas=true
+    ${resp}=    GET On Session    api    /api/expedientes/${EXP}[id]/auditoria    params=${params}    headers=${H_SEC}    expected_status=200
     ${reg}=    Set Variable    ${resp.json()}
     ${acciones}=    Evaluate    [r["accion"] for r in $reg]
     List Should Contain Value    ${acciones}    CREAR_EXPEDIENTE
@@ -20,6 +22,13 @@ Historial en orden cronologico con CREAR y CONSULTAR con expediente_id
     FOR    ${r}    IN    @{reg}
         Should Be Equal As Integers    ${r}[expediente_id]    ${EXP}[id]
     END
+
+Por defecto el historial muestra solo los cambios
+    [Tags]    RN-09.2
+    ${resp}=    GET On Session    api    /api/expedientes/${EXP}[id]/auditoria    headers=${H_SEC}    expected_status=200
+    ${acciones}=    Evaluate    [r["accion"] for r in $resp.json()]
+    List Should Not Contain Value    ${acciones}    CONSULTAR_EXPEDIENTE
+    List Should Contain Value    ${acciones}    CAMBIAR_ESTADO
 
 Historial incluye usuario fecha hash antes y despues
     ${resp}=    GET On Session    api    /api/expedientes/${EXP}[id]/auditoria    headers=${H_ADMIN}    expected_status=200
@@ -99,7 +108,8 @@ Bitacora integra tras varias operaciones y los hashes son unicos
     Should Be True    ${despues.json()}[integra]
     Should Be Equal    ${despues.json()}[roto_en_id]    ${None}
     ${nuevos}=    Evaluate    ${despues.json()}[registros] - ${antes.json()}[registros]
-    Should Be True    ${nuevos} >= 6
+    # SEC-12 (Sprint 9): el login de un usuario inexistente ya no se encadena: 5 registros, no 6
+    Should Be True    ${nuevos} >= 5
     ${params}=    Create Dictionary    limite=1000
     ${bit}=    GET On Session    api    /api/auditoria    params=${params}    headers=${H_ADMIN}    expected_status=200
     ${hashes}=    Evaluate    [r["hash"] for r in $bit.json()]

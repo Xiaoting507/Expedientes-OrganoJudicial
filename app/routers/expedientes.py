@@ -184,12 +184,20 @@ def detalle(
 @router.get("/{exp_id}/auditoria", response_model=list[AuditoriaOut])
 def auditoria_expediente(
     exp_id: int,
+    incluir_consultas: bool = False,
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(requiere_rol(Rol.juez, Rol.secretario, Rol.admin)),
 ):
-    """PB-03: historial de auditoría de un expediente, en orden cronológico."""
+    """PB-03: historial de auditoría de un expediente, en orden cronológico.
+
+    RN-09.2 (decisión del PO, Sprint 9): por defecto muestra solo los cambios. Las consultas
+    (CONSULTAR_EXPEDIENTE) se siguen registrando en la cadena y se ven con incluir_consultas=true.
+    """
     exp = _obtener(db, exp_id, usuario)
-    return db.query(Auditoria).filter(Auditoria.expediente_id == exp.id).order_by(Auditoria.id).all()
+    q = db.query(Auditoria).filter(Auditoria.expediente_id == exp.id)
+    if not incluir_consultas:
+        q = q.filter(Auditoria.accion != "CONSULTAR_EXPEDIENTE")
+    return q.order_by(Auditoria.id).all()
 
 
 @router.patch("/{exp_id}", response_model=ExpedienteOut)

@@ -9,19 +9,23 @@ Sprint 7 — integridad de la bitácora:
 - SEC-11: la lectura del último registro y la escritura del nuevo se serializan
   (cerrojo del proceso + pg_advisory_xact_lock en PostgreSQL), así dos peticiones
   simultáneas no generan dos registros con el mismo hash_anterior.
+
+Sprint 9 — SEC-12: los eventos anónimos (consulta ciudadana y login con usuario inexistente)
+ya no entran en la cadena: van a `registrar_acceso`, sin hash y con rotación por antigüedad.
+`verificar_cadena` recorre la tabla por lotes (yield_per), sin cargarla entera en memoria.
 """
 import hashlib
 import hmac
 import json
 import threading
-from datetime import timezone
+from datetime import timedelta, timezone
 
 from fastapi import Request
 from sqlalchemy import event, text
 from sqlalchemy.orm import Session
 
 from .config import AUDIT_KEY
-from .models import Auditoria
+from .models import Auditoria, EventoAcceso
 
 GENESIS = "0" * 64
 VERSION_ACTUAL = 2
@@ -92,6 +96,20 @@ def registrar(
     db.add(reg)
     db.flush()  # el siguiente registro de la misma transacción debe ver este como "último"
     return reg
+
+
+def registrar_acceso(db: Session, *, accion: str, usuario: str, referencia: str | int = "",
+                     request: Request | None = None) -> EventoAcceso:
+    """SEC-12: evento anónimo fuera de la cadena. Borra en la misma transacción lo que pasó la retención."""
+    from .config import EVENTOS_RETENCION_DIAS
+    from .models import ahora
+
+    limite = ahora() - timedelta(days=EVENTOS_RETENCION_DIAS)
+    db.query(EventoAcceso).filter(EventoAcceso.fecha < limite).delete(synchronize_session=False)
+    ev = EventoAcceso(fecha=ahora().replace(microsecond=0), accion=accion, usuario=usuario[:60],
+                      referencia=str(referencia)[:40], ip=(request.client.host if request and request.client else ""))
+    db.add(ev)
+    return ev
 
 
 def verificar_cadena(db: Session) -> dict:

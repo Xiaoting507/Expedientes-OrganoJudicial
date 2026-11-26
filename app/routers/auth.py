@@ -57,8 +57,8 @@ def login(datos: LoginIn, request: Request, db: Session = Depends(get_db)):
     if usuario is None:
         verificar_password(datos.password, _HASH_FICTICIO)
         fallos_por_ip.registrar(ip)
-        audit.registrar(db, usuario=datos.username, accion="LOGIN_FALLIDO", entidad="usuario",
-                        entidad_id="-", request=request)
+        # SEC-12 (Sprint 9): sin cuenta real no hay actor identificado: fuera de la cadena
+        audit.registrar_acceso(db, accion="LOGIN_FALLIDO", usuario=datos.username, request=request)
         db.commit()
         raise error
 

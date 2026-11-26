@@ -124,6 +124,7 @@ jobs:
           kubectl apply -f k8s/01-configmap.yaml
           kubectl apply -f k8s/02-postgres.yaml
           kubectl -n expediente-judicial rollout status statefulset/postgres --timeout=180s
+          kubectl apply -f k8s/025-documentos-pvc.yaml
           kubectl apply -f k8s/03-app.yaml
           kubectl -n expediente-judicial set image deployment/expediente-api api=expediente-api:${{ github.sha }}
           kubectl -n expediente-judicial rollout status deployment/expediente-api --timeout=180s
@@ -153,6 +154,24 @@ jobs:
             echo "ERROR: aceptó una conexión sin TLS"; exit 1
           fi
           echo "rechazada OK"
+      - name: Verificar que las 2 réplicas ven el mismo PDF (volumen compartido)
+        run: |
+          TOKEN=$(curl -sf --cacert ca.crt https://localhost:8443/api/auth/login -H "Content-Type: application/json" \
+            -d "{\"username\":\"secretario1\",\"password\":\"$SEED_PASS\"}" | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
+          printf '%%PDF-1.4\n%% replica %s\n%%%%EOF\n' "${{ github.sha }}" > prueba.pdf
+          DOC=$(curl -sf --cacert ca.crt -H "Authorization: Bearer $TOKEN" -F "archivo=@prueba.pdf;type=application/pdf" \
+            https://localhost:8443/api/expedientes/1/documentos | python3 -c "import sys,json;print(json.load(sys.stdin)['id'])")
+          echo "PDF subido como documento $DOC"
+          P=9100
+          for POD in $(kubectl -n expediente-judicial get pods -l app=expediente-api -o name); do
+            P=$((P+1))
+            kubectl -n expediente-judicial port-forward "$POD" $P:8000 >/dev/null 2>&1 &
+            for i in $(seq 1 20); do curl -sf localhost:$P/healthz >/dev/null && break; sleep 1; done
+            R=$(curl -sf -H "Authorization: Bearer $TOKEN" localhost:$P/api/expedientes/1/documentos/$DOC/verificar)
+            echo "$POD -> $R"
+            echo "$R" | python3 -c "import sys,json;assert json.load(sys.stdin)['integro'] is True"
+          done
+          echo "Las réplicas leen el mismo PDF íntegro"
       - name: Pruebas contra el cluster por HTTPS (PostgreSQL real)
         run: robot --variable BASE_URL:https://localhost:8443 --variable PASSWORD:$SEED_PASS --outputdir results/staging tests/robot
       - name: Logs si algo falla

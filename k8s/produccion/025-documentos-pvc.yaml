@@ -1,0 +1,12 @@
+# EJEMPLO para producción con varios nodos: aplicar en lugar de k8s/025-documentos-pvc.yaml.
+# ReadWriteMany permite que réplicas en nodos distintos vean los mismos PDF.
+# storageClassName debe ser una clase con RWX del proveedor (por ejemplo NFS, Azure Files, EFS o CephFS).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: documentos
+  namespace: expediente-judicial
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: rwx-compartido   # reemplazar por la clase RWX del clúster
+  resources: {requests: {storage: 20Gi}}

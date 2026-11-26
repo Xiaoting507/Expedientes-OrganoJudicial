@@ -19,6 +19,7 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
+        fsGroup: 10001   # el volumen de los PDF queda escribible para el usuario de la app
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: api
@@ -63,9 +64,10 @@ spec:
             - {name: postgres-ca, mountPath: /etc/postgres-ca, readOnly: true}   # SEC-14: verify-full
       volumes:
         - {name: tmp, emptyDir: {}}
-        # HU-10: en staging basta emptyDir; en producción real usar un PersistentVolumeClaim ReadWriteMany
-        # (las 2 réplicas deben ver los mismos PDF) o un almacenamiento de objetos.
-        - {name: documentos, emptyDir: {}}
+        # HU-10 (Sprint 9): volumen compartido por las réplicas (k8s/025-documentos-pvc.yaml);
+        # antes era un emptyDir por pod y un PDF subido en una réplica no existía en la otra.
+        - name: documentos
+          persistentVolumeClaim: {claimName: documentos}
         # SEC-14 (Sprint 9): solo la CA, para que la app verifique el certificado de PostgreSQL
         - name: postgres-ca
           secret:
